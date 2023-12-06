@@ -1,3 +1,4 @@
+#include "include/turbofft/tensor.h"
 namespace turbofft{
 namespace fft{
 namespace device{
@@ -11,7 +12,7 @@ namespace device{
     
     /// Device-level Tensor Shape (bs, N1, N2, N3, ...) 
     /// Original Problem Size, ToDo: support multi nodes
-    typename TensorShape DataTensor_Device,
+    typename Tensor DataTensor_Device,
 
     /// Kernel-level Tensor Shape (bs, N1, N2, N3, ...)
     /// Single Node Problem Size, N1 * N2 * N3 == N_i(device_level), 
@@ -20,7 +21,7 @@ namespace device{
     ///     - glb2sh iterator
     ///     - sh2reg iterator & reg2glb iterator
     ///        - Transform for last itr, (bs, N1, N2, N3) --> (bs, N3, N2, N1)
-    typename TensorShape DataTensor_Kernel,
+    typename Tensor DataTensor_Kernel,
     
     /// Threadblock-level Tensor Shape (bs, N1, N2, N3, ...)
     /// Threadblock-level plan, N1 * N2 * N3 = N_i(kernel_level)
@@ -35,7 +36,7 @@ namespace device{
     ///        - bs is always the inner dim to avoid bankconflict
     /// ToDo Twiddling Factor
     
-    typename TensorShape DataTensor_Threadblock,
+    typename Tensor DataTensor_Threadblock,
     /// Warp-level Tensor Shape (bs, N1, N2, N3, ...)
     /// Warp-level plan, 
     /// If using tensor core, 
@@ -45,7 +46,7 @@ namespace device{
     /// bs = WarpSize, namely 32 by default
     /// 
     
-    typename TensorShape DataTensor_Warp,
+    typename Tensor DataTensor_Warp,
     /// Thread-level Tensor Shape (bs, N1, N2, N3, ...)
     /// Thread-level plan
     /// If using tensor core, 
@@ -53,7 +54,7 @@ namespace device{
     /// Else, 
     ///       N1 * N2 * N3 ... = N_i(threadblock_level) 
     /// bs = N_i(thredblock_level) / (N1 * N2 * N3 * ...)
-    typename TensorShape DataTensor_Thread,
+    typename Tensor DataTensor_Thread,
 
     /// Global to register iterator
     typename glb2reg_itr,
@@ -72,7 +73,7 @@ namespace device{
     
     /// Shared to register iterator
     typename reg2sh_itr,
-    
+
     /// Operator
     typename Operator
     > struct DefaultFFT{
