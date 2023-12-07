@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
-project(cuda_project LANGUAGES CXX CUDA)
+project(turbofft LANGUAGES CXX CUDA)
 
 # Set CUDA architecture
 set(CMAKE_CUDA_ARCHITECTURES 80)
@@ -11,7 +11,11 @@ find_package(CUDA REQUIRED)
 include_directories("include")
 
 # Specify the executable and its source files
-add_executable(cuda_project test.cu)
+add_executable(turbofft main.cu)
 
 # Link the CUDA libraries
-target_link_libraries(cuda_project CUDA::cudart)
+# set(CUDA_TOOLKIT_ROOT_DIR "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0")
+# # set(CUDA_INCLUDE_DIRS "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/include")
+# set(CUDA_CUDART_LIBRARY "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/lib64")
+find_package(CUDAToolkit)
+target_link_libraries(turbofft CUDA::cudart)

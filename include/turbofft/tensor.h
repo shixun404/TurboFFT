@@ -2,21 +2,25 @@ namespace turbofft{
 namespace fft{
     template<
     typename DataType,
-    int Dim,
-    int *Dims
+    size_t... Dimensions
     > class Tensor{
         private:
             DataType* data;
-            int dim = Dim;
-            int dims[Dim]; //initiliaze dims with dim
+            size_t NumDimensions = sizeof...(Dimensions);
+            size_t dimensions[sizeof...(Dimensions)]={Dimensions...};
         public:
-            Tensor(int dims*){
-                #pragma unroll
-                for(int i = 0; i < Dim; ++i){
-                    dims[i] = Dims[i];
-                }
+            Tensor(){}
+
+            size_t CalculateTotalElements(){
+                return (Dimensions * ... * 1);
             }
-    }
+
+            size_t CalculateTotalSize(){
+                return (Dimensions * ... * 1) * sizeof(DataType);
+            }
+    };
+
+
 
 
 }
