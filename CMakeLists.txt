@@ -8,7 +8,7 @@ set(CMAKE_CUDA_ARCHITECTURES 80)
 find_package(CUDA REQUIRED)
 
 # Include the TurboFFT directory
-include_directories("include")
+include_directories("include/")
 
 # Specify the executable and its source files
 add_executable(turbofft main.cu)
@@ -19,3 +19,4 @@ add_executable(turbofft main.cu)
 # set(CUDA_CUDART_LIBRARY "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/lib64")
 find_package(CUDAToolkit)
 target_link_libraries(turbofft CUDA::cudart)
+target_link_libraries(turbofft CUDA::cufft)
