@@ -3,18 +3,15 @@
 namespace turbofft{
 namespace fft{
 namespace thread{
-    // template<
-    // typename DataType,
-    // typename Tensor
-    // >
-    template<typename DataType>
+    template<
+    typename DataType,
+    typename Tensor
+    >
+    // template<typename DataType>
     __global__ void fft(DataType *input, DataType *output){
         DataType tmp[2];
-        if(threadIdx.x < 1){
-        printf("tid=%d\n", threadIdx.x);
-        printf("thread::fft finished\n");  
-        tmp[0] = input[0];
-        printf("%f %f\n", tmp[0].x, tmp[0].y);
+
+        
         tmp[0].x = input[0].x + input[1].x;
         tmp[0].y = input[0].y + input[1].y;
               
@@ -24,27 +21,8 @@ namespace thread{
         output[0] = tmp[0];
         output[1] = tmp[1];
 
-        }
     }
-    // __global__ void fft(float2 *input, float2 *output){
-    //     float2 tmp[2];
-    //     if(threadIdx.x < 1){
-    //     printf("tid=%d\n", threadIdx.x);
-    //     printf("thread::fft finished\n");  
-    //     // tmp[0] = input[0];
-    //     printf("%f %f\n", tmp[0].x, tmp[0].y);
-    //     tmp[0].x = input[0].x + input[1].x;
-    //     tmp[0].y = input[0].y + input[1].y;
-              
-    //     tmp[1].x = input[0].x - input[1].x;
-    //     tmp[1].y = input[0].y - input[1].y;
-
-    //     output[0] = tmp[0];
-    //     output[1] = tmp[1];
-
-    //     }
-    // }
-    // template __global__ void fft<float2>(float2 *input, float2 *output);
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// Partial Specialization for 2-point    
     // template<
