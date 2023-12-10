@@ -1,33 +1,6 @@
-#include "turbofft/tensor.h"
-#include "turbofft/constants.h"
-#include "turbofft/macro_ops.h"
-#include "stdio.h"
-namespace turbofft{
-namespace fft{
-namespace thread{
-    template<
-    typename DataType,
-    int logN
-    >
-    __global__ void fft(DataType *input, DataType *output){
-        DataType tmp[2];
-
+extern __shared__ double shared[];
         
-        tmp[0].x = input[0].x + input[1].x;
-        tmp[0].y = input[0].y + input[1].y;
-              
-        tmp[1].x = input[0].x - input[1].x;
-        tmp[1].y = input[0].y - input[1].y;
-
-        output[0] = tmp[0];
-        output[1] = tmp[1];
-
-    }
-
-    
-    extern __shared__ double shared[];
-        
-    __global__ void  fft<double2, 8>(double2* inputs, double2* outputs) {
+    __global__ void __launch_bounds__(32) fft_radix2_logN8(double2* inputs, double2* outputs, double2* r_2) {
     
     int tid = threadIdx.x + threadIdx.y * blockDim.x;
     double2 temp_0;
@@ -818,71 +791,3 @@ namespace thread{
         
         }
     
-
-
-    
-////////////////////////////////////////////////////////////////////////////////
-/// Partial Specialization for 2-point    
-    // template<
-    // typename DataType
-    // >
-    // __global__ void fft<DataType, turbofft::Tensor<DataType, 1, 2>>(DataType *input, DataType *output){
-        
-    //     DataType tmp[2];
-        
-    //     tmp[0].x = input[0].x + input[1].x;
-    //     tmp[0].y = input[0].y + input[1].y;
-        
-    //     tmp[1].x = input[0].x - input[1].x;
-    //     tmp[1].y = input[0].y - input[1].y;
-
-    //     output[0] = tmp[0];
-    //     output[1] = tmp[1];
-    // }
-// ////////////////////////////////////////////////////////////////////////////////
-// /// Partial Specialization for 4-point
-//     template<
-//     typename DataType
-//     >
-//     __global__ fft<DataType, bs, Tensor<DataType, bs, 2, 2>>(DataType *input, DataType *output){
-
-//     }
-// ////////////////////////////////////////////////////////////////////////////////
-// /// Partial Specialization for 8-point
-//     template<
-//     typename DataType
-//     >
-//     __global__ fft<DataType, bs, Tensor<DataType, bs, 2, 2, 2>>
-//     (DataType *input, DataType *output){
-
-//     }
-// ////////////////////////////////////////////////////////////////////////////////
-// /// Partial Specialization for 16-point
-//     template<
-//     typename DataType
-//     >
-//     __global__ fft<DataType, bs, Tensor<DataType, bs, 2, 2, 2, 2>>
-//     (DataType *input, DataType *output){
-
-//     }
-// ////////////////////////////////////////////////////////////////////////////////
-// /// Partial Specialization for 32-point
-//     template<
-//     typename DataType
-//     >
-//     __global__ fft<DataType, bs, Tensor<DataType, bs, 2, 2, 2, 2, 2>>
-//     (DataType *input, DataType *output){
-
-//     }
-// ////////////////////////////////////////////////////////////////////////////////
-// /// Partial Specialization for 64-point
-//     template<
-//     typename DataType
-//     >
-//     __global__ fft<DataType, bs, Tensor<DataType, bs, 2, 2, 2, 2, 2, 2>>
-//     (DataType *input, DataType *output){
-
-//     }
-}
-}
-}

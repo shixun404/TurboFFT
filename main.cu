@@ -12,7 +12,8 @@ void test_turbofft(DataType* input_d, DataType* output_d, DataType* output_turbo
     dim3 blockDim(1, 1, 1);
     // turbofft::fft::thread::fft<DataType, turbofft::Tensor<DataType, 1, 2>><<<gridDim, blockDim>>>(input_d, output_d);
     // turbofft::fft::thread::fft<DataType><<<gridDim, blockDim>>>(input_d, output_d);
-    turbofft::fft::thread::fft<DataType><<<gridDim, blockDim>>>(input_d, output_d);
+    turbofft::fft::thread::fft<DataType, int(log2f(N))><<<gridDim, blockDim>>>(input_d, output_d);
+    // turbofft::fft::thread::fft<DataType><<<gridDim, blockDim>>>(input_d, output_d);
     cudaDeviceSynchronize();
     printf("%d\n",  N * sizeof(DataType));
     checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)output_d, N * sizeof(DataType), cudaMemcpyDeviceToHost));
@@ -23,7 +24,7 @@ void test_turbofft(DataType* input_d, DataType* output_d, DataType* output_turbo
 int main(){
     DataType* input, *output_turbofft, *output_cufft;
     DataType* input_d, *output_d;
-    int N = 2, bs=1;
+    int N = 256, bs=1;
 
     utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, N);
     test_turbofft(input_d, output_d, output_turbofft, N);
