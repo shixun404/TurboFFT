@@ -5,53 +5,61 @@
 namespace turbofft{
 namespace fft{
 namespace thread{
+    extern __shared__ double shared[];
+
     template<
     typename DataType,
     int logN
     >
-    __global__ void fft(DataType *input, DataType *output){
-        DataType tmp[2];
+    __global__ void fft(DataType *input, DataType *output);
+
+    // template<typename DataType, 1>
+    // __global__ void fft<DataType, 1>(DataType *input, DataType *output){
+    //     DataType tmp[2];
 
         
-        tmp[0].x = input[0].x + input[1].x;
-        tmp[0].y = input[0].y + input[1].y;
+    //     tmp[0].x = input[0].x + input[1].x;
+    //     tmp[0].y = input[0].y + input[1].y;
               
-        tmp[1].x = input[0].x - input[1].x;
-        tmp[1].y = input[0].y - input[1].y;
+    //     tmp[1].x = input[0].x - input[1].x;
+    //     tmp[1].y = input[0].y - input[1].y;
 
-        output[0] = tmp[0];
-        output[1] = tmp[1];
+    //     output[0] = tmp[0];
+    //     output[1] = tmp[1];
 
-    }
+    // }
 
     
-    extern __shared__ double shared[];
-        
-    __global__ void  fft<double2, 8>(double2* inputs, double2* outputs) {
     
-    int tid = threadIdx.x + threadIdx.y * blockDim.x;
-    double2 temp_0;
-        double2 temp_1;
-        double2 temp_2;
-        double2 temp_3;
-        double2 temp_4;
-        double2 temp_5;
-        double2 temp_6;
-        double2 temp_7;
+    template<
+    typename DataType,
+    int logN
+    >
+    __global__ void  fft(DataType* inputs, DataType* outputs) {
+    
+        int tid = threadIdx.x + threadIdx.y * blockDim.x;
+        DataType temp_0;
+        DataType temp_1;
+        DataType temp_2;
+        DataType temp_3;
+        DataType temp_4;
+        DataType temp_5;
+        DataType temp_6;
+        DataType temp_7;
         
-        double2* sdata = (double2*)shared;
+        DataType* sdata = (DataType*)shared;
         int tx = threadIdx.x;
         int ty = threadIdx.y;
         int bx = blockIdx.x;
         int N = 256;
         int __id[8];
-        double2 tmp;
-        double2 tmp_angle, tmp_angle_rot;
+        DataType tmp;
+        DataType tmp_angle, tmp_angle_rot;
         int j;
         int k;
         int tmp_id;
         int n = 1, n_global = 1;
-        double2 tmp_angle_bk;
+        DataType tmp_angle_bk;
         temp_0 = inputs[(ty + 0 * 32) + (tx + bx * 1) * 256];
         temp_1 = inputs[(ty + 1 * 32) + (tx + bx * 1) * 256];
         temp_2 = inputs[(ty + 2 * 32) + (tx + bx * 1) * 256];
@@ -75,7 +83,7 @@ namespace thread{
         MY_ANGLE2COMPLEX((double)(j * k) * -3.141592653589793f, tmp_angle);
         tmp_angle_bk = tmp_angle;
         
-                    tmp_angle = tmp_angle_bk;
+            tmp_angle = tmp_angle_bk;
     
             tmp_angle_rot.x = 1.0f;
             tmp_angle_rot.y = 0.0f;
@@ -139,7 +147,7 @@ namespace thread{
         MY_ANGLE2COMPLEX((double)(j * k) * -1.5707963267948966f, tmp_angle);
         tmp_angle_bk = tmp_angle;
         
-                    tmp_angle = tmp_angle_bk;
+            tmp_angle = tmp_angle_bk;
     
             tmp_angle_rot.x = 1.0f;
             tmp_angle_rot.y = 0.0f;

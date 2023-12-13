@@ -32,17 +32,13 @@ def ft_1D_fft_code_gen(N, num_thread,
                 n += 1
             print(output)
             plan.append(n)
-        
+         
         print("plan: ", plan)
         print("twid: ",twiddle_type)
         order = []
         for i in range(signal_per_thread * 2):
             order.append(i)
         offset = signal_per_thread
-        
-#         ft_fft = f'''
-# __constant__ float r_1[{2 * N}];
-# '''
         ft_fft = f'''extern __shared__ {data_type} shared[];
         
     __global__ void __launch_bounds__({num_thread}) fft_radix{radix}_logN{exponent}''' \
