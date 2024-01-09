@@ -141,8 +141,8 @@ class TurboFFT:
             ''' 
             
     def fft_reg(self, cur_stage):
-        print(self.tensor_shape, self.tensor_shape[cur_stage])
-        bs = self.WorkerFFTSize // self.tensor_shape[cur_stage]
+        print(self.tensor_shape, self.tensor_shape[-1])
+        bs = self.WorkerFFTSize // self.tensor_shape[-1]
         logbs = int(log(bs, 2))
         reg_tensor_stride = th.zeros(self.logWorkerFFTSize)
         strd = 1
@@ -151,13 +151,31 @@ class TurboFFT:
             reg_tensor_stride[i] = strd
             i += 1
             strd *= 2
-        st = self.logWorkerFFTSize - 1 if self.WorkerFFTSize == self.tensor_shape[cur_stage] else self.logWorkerFFTSize - 1 - logbs
+        # st = self.logWorkerFFTSize - 1 if self.WorkerFFTSize == self.tensor_shape[-1] else self.logWorkerFFTSize - 1 - logbs
+        st = self.logWorkerFFTSize - 1
         
 
-
+        tmp = 1
+        stride = 1
+        cur_stage_stride = 1
+        tensor_shape_bs = [self.BS] + self.tensor_shape
+        cur_stage_stride = self.BS * th.prod(th.as_tensor(self.tensor_shape)) / self.WorkerFFTSize
+        self.fft += f'''
+        offset += tid;
+        '''
+        
+        self.fft += '''
+            __syncthreads();
+        '''
+        for i in range(self.WorkerFFTSize):
+            self.fft += f'''
+            {self.rPtr}[{i}] = {self.shPtr}[offset + {cur_stage_stride * i}];
+            '''
+    
         print(st, reg_tensor_stride)
         
-        for i in range(logbs + st, logbs + -1, -1):
+        # for i in range(st, -1, -1):
+        for i in range(st, logbs - 1, -1):
             print("*************************")
             print(reg_tensor_stride[i])
             for j in range(self.WorkerFFTSize):
@@ -165,15 +183,19 @@ class TurboFFT:
                     continue
                 id_j1 = int(th.dot(self.state_vec[j], reg_tensor_stride))
                 id_j2 = int(id_j1 + reg_tensor_stride[i])
-                id_k = int(th.dot(self.state_vec[j, logbs:], reg_tensor_stride[logbs:]))
-                print(id_j1, id_j2, id_k, self.state_vec[j, :i], i,  (2 ** (i + 1)))
+                # id_k = int(th.dot(self.state_vec[j, :i], reg_tensor_stride[:i]))
+                id_k = int(th.dot(self.state_vec[j, logbs:i], reg_tensor_stride[logbs:i]))
+                
+                print(id_j1, id_j2, id_k, i,  (2 ** (i + 1 - logbs)), st, logbs)
                 
                 self.fft += f'''
                 tmp = {self.rPtr}[{id_j1}] 
                 {self.rPtr}[{id_j1}] = turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
                 {self.rPtr}[{id_j2}] = turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
-                angle.x = {cos(-2 * pi * id_k * 1 / (2 ** (st + 1)))};
-                angle.y = {sin(-2 * pi * id_k * 1 / (2 ** (st + 1)))};
+                // angle.x = {cos(-2 * pi * id_k * 1 / (2 ** (i + 1)))};
+                // angle.y = {sin(-2 * pi * id_k * 1 / (2 ** (i + 1)))};
+                angle.x = {cos(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs)))};
+                angle.y = {sin(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs)))};
                 tmp = {self.rPtr}[{id_j2}];
                 turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle)l
                 '''
@@ -181,13 +203,16 @@ class TurboFFT:
                 tmp = self.data[id_j1].item()
                 self.data[id_j1] = tmp + self.data[id_j2]
                 self.data[id_j2] = tmp - self.data[id_j2]
-                angle = cos(-2 * pi * id_k * 1 / (2 ** (i + 1))) + sin(-2 * pi * id_k * 1 / (2 ** (i + 1))) * 1.j
+                # angle = cos(-2 * pi * id_k * 1 / (2 ** (i + 1))) + sin(-2 * pi * id_k * 1 / (2 ** (i + 1))) * 1.j
+                angle = cos(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs))) + sin(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs))) * 1.j
                 self.data[id_j2] = self.data[id_j2] * angle
+        # reg_tensor_stride_reverse = th.cat((reg_tensor_stride[:(st + 1)].flip(0), reg_tensor_stride[(st + 1):]), dim=0)
         reg_tensor_stride_reverse = th.cat((reg_tensor_stride[:logbs], reg_tensor_stride[logbs:].flip(0)), dim=0)
 
         for i in range(self.WorkerFFTSize):
             output_id = int(th.dot(self.state_vec[i], reg_tensor_stride_reverse))
             input_id = int(th.dot(self.state_vec[i], reg_tensor_stride))
+            print("output, input id:", output_id, input_id)
             self.output[output_id] = self.data[input_id]
 
         
@@ -196,31 +221,46 @@ class TurboFFT:
         tmp = 1
         stride = 1
         cur_stage_stride = 1
-        for i in range(self.tensor_shape):
-            stride *= self.tensor_shape[i]
-            if i == cur_stage:
-                cur_stage_stride = stride / self.tensor_shape[i]
+        self.tensor_shape = self.tensor_shape[:cur_stage] + [self.tensor_shape[-1]] + self.tensor_shape[cur_stage:-1]
+        tensor_shape_bs = [self.BS] + self.tensor_shape
+        for i in range(len(tensor_shape_bs)):
+            stride *= tensor_shape_bs[i]
+            if i == cur_stage + 1:
+                cur_stage_stride = int(stride / tensor_shape_bs[i])
                 continue
             self.fft += f'''
-            offset += ((tid / {tmp}) % {self.tensor_shape[i]} / {bs}) * {stride * bs};
+            offset += ((tid / {tmp}) % {tensor_shape_bs[i]}) * {stride};
             '''
-            tmp *= self.tensor_shape[i]
-
+            tmp *= tensor_shape_bs[i]
+        
+        self.fft += '''
+        __syncthreads();
+        '''
         for i in range(self.WorkerFFTSize):
             output_id = int(th.dot(self.state_vec[i], reg_tensor_stride_reverse))
             input_id = int(th.dot(self.state_vec[i], reg_tensor_stride))
+            print(i, input_id)
             self.fft += f'''
-            {self.shPtr}[offset + {cur_stage_stride * i}] = {self.rPtr}[{input_id}];
+            {self.shPtr}[offset + {cur_stage_stride * output_id}] = {self.rPtr}[{input_id}];
             '''
-
+        print(cur_stage_stride)
+        # assert 0
     def shared2reg(self, ):
         pass
 
 if __name__ == '__main__':
-    N = 512
+    N = 128
     fft = TurboFFT(N=N)
     # print(fft.data)
-    torch_fft_result = th.fft.fft(fft.data.reshape(fft.WorkerFFTSize // 1, 1), dim=0).flatten()
+    # torch_fft_result = th.fft.fft(fft.data.reshape(fft.WorkerFFTSize // 4, 4), dim=1).flatten()
+    fft.fft_reg(0)
+    fft.data = fft.output.clone()
+    fft.fft_reg(1)
+    fft.data = fft.output.clone()
+    # fft.fft_reg(1)
+    # fft.fft_reg(2)
+    # torch_fft_result = th.fft.fft(fft.data).flatten()
+    torch_fft_result = th.fft.fft(fft.data.reshape(fft.WorkerFFTSize // 4, 4), dim=0).flatten()
     print(fft.tensor_shape)
     # print(fft.data)
     # print(fft.data.reshape(4, -1)[:, 0])
@@ -228,7 +268,7 @@ if __name__ == '__main__':
     # print( th.fft.fft(fft.data.reshape(4, -1)[:, 0]))
     # assert 0
     # print(fft.data)
-    fft.fft_reg(0)
+    fft.fft_reg(2)
     print(fft.output)
     print(torch_fft_result)
     rel_err = th.norm(fft.output - torch_fft_result) / th.norm(torch_fft_result)
