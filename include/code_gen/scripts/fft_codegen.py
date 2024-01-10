@@ -1,18 +1,19 @@
 import torch as th
-from math import log, sin, cos, pi
+from math import *
+import numpy as np
 class TurboFFT:
     def __init__(self, N=256, radix=2, WorkerFFTSize = 8, data_type='double'):
         self.fft = ''''''
         self.N = N
-        self.BS = 1
+        self.BS = 4
         self.strdBS = 1
         self.strdTensor = 1
         self.strdTB = 1
         self.exponent = int(log(N, radix))
         self.data_type = "double"
-        self.gPtr = 0
-        self.rPtr = 0
-        self.shPtr = 0
+        self.gPtr = "gPtr"
+        self.rPtr = "rPtr"
+        self.shPtr = "shPtr"
         self.WorkerFFTSize = WorkerFFTSize
         self.logWorkerFFTSize = int(log(self.WorkerFFTSize, 2))
         self.coalesced = 128 / 64 if data_type == "float" else 128 / 128
@@ -159,7 +160,7 @@ class TurboFFT:
         stride = 1
         cur_stage_stride = 1
         tensor_shape_bs = [self.BS] + self.tensor_shape
-        cur_stage_stride = self.BS * th.prod(th.as_tensor(self.tensor_shape)) / self.WorkerFFTSize
+        cur_stage_stride = int(self.BS * th.prod(th.as_tensor(self.tensor_shape)) / self.WorkerFFTSize)
         self.fft += f'''
         offset += tid;
         '''
@@ -187,17 +188,18 @@ class TurboFFT:
                 id_k = int(th.dot(self.state_vec[j, logbs:i], reg_tensor_stride[logbs:i]))
                 
                 print(id_j1, id_j2, id_k, i,  (2 ** (i + 1 - logbs)), st, logbs)
-                
+                # tmp_angle = -2 * pi * id_k * 1 / (2 ** (i + 1))
+                tmp_angle = (-2 * id_k * 1 / (2 ** (i + 1 - logbs))) * pi
+                rel_bounds = 1e-8
+                abs_bounds = 1e-5
                 self.fft += f'''
                 tmp = {self.rPtr}[{id_j1}] 
                 {self.rPtr}[{id_j1}] = turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
                 {self.rPtr}[{id_j2}] = turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
-                // angle.x = {cos(-2 * pi * id_k * 1 / (2 ** (i + 1)))};
-                // angle.y = {sin(-2 * pi * id_k * 1 / (2 ** (i + 1)))};
-                angle.x = {cos(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs)))};
-                angle.y = {sin(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs)))};
+                angle.x = {0 if np.allclose(0, cos(tmp_angle), rel_bounds, abs_bounds) else cos(tmp_angle)};
+                angle.y = {0 if np.allclose(0, sin(tmp_angle), rel_bounds, abs_bounds) else sin(tmp_angle)};
                 tmp = {self.rPtr}[{id_j2}];
-                turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle)l
+                turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
                 '''
 
                 tmp = self.data[id_j1].item()
@@ -223,6 +225,7 @@ class TurboFFT:
         cur_stage_stride = 1
         self.tensor_shape = self.tensor_shape[:cur_stage] + [self.tensor_shape[-1]] + self.tensor_shape[cur_stage:-1]
         tensor_shape_bs = [self.BS] + self.tensor_shape
+        print(tensor_shape_bs)
         for i in range(len(tensor_shape_bs)):
             stride *= tensor_shape_bs[i]
             if i == cur_stage + 1:
@@ -232,21 +235,25 @@ class TurboFFT:
             offset += ((tid / {tmp}) % {tensor_shape_bs[i]}) * {stride};
             '''
             tmp *= tensor_shape_bs[i]
-        
+        if cur_stage == len(self.tensor_shape) - 1:
+            cur_stage_stride = int(self.BS * th.prod(th.as_tensor(self.tensor_shape)) / self.WorkerFFTSize)
+        # assert 0
         self.fft += '''
         __syncthreads();
         '''
+        dict_output = {}
         for i in range(self.WorkerFFTSize):
             output_id = int(th.dot(self.state_vec[i], reg_tensor_stride_reverse))
             input_id = int(th.dot(self.state_vec[i], reg_tensor_stride))
-            print(i, input_id)
+            dict_output[output_id] = input_id
+        print(dict_output)
+        for output_id in range(self.WorkerFFTSize): 
+            print(output_id, dict_output[output_id])
             self.fft += f'''
-            {self.shPtr}[offset + {cur_stage_stride * output_id}] = {self.rPtr}[{input_id}];
+            {self.shPtr}[offset + {cur_stage_stride * output_id}] = {self.rPtr}[{dict_output[output_id]}];
             '''
         print(cur_stage_stride)
         # assert 0
-    def shared2reg(self, ):
-        pass
 
 if __name__ == '__main__':
     N = 128
@@ -272,6 +279,7 @@ if __name__ == '__main__':
     print(fft.output)
     print(torch_fft_result)
     rel_err = th.norm(fft.output - torch_fft_result) / th.norm(torch_fft_result)
+    print(fft.fft)
     print(f"Rel_ERR = {rel_err}")
     if rel_err > 1e-3:
         print("Error!\n")
