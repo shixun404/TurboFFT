@@ -41,7 +41,7 @@ class TurboFFT:
                 strd *= 2
 
         
-        for dim in range(len(self.global_tensor_shape) - 1):
+        for dim in range(len(self.global_tensor_shape) - 2, -1, -1):
             fft_code = self.head(dim)
 
             threadblock_tensor_shape =  self.threadblock_tensor_shape[dim]
@@ -66,11 +66,13 @@ class TurboFFT:
                 if threadblock_dim != len(threadblock_tensor_shape) - 1:
                     fft_code += self.reg2shared(threadblock_bs, threadblock_tensor_shape, 
                                         WorkerFFTSize, threadblock_dim, dict_output)
-                else:
-                    blockorder = self.list_reverse(blockorder, 0, -1)
-                    fft_code += self.globalAccess(dim, global_tensor_shape, 
-                                    threadblock_bs_dim, threadblock_bs, WorkerFFTSize,
-                                     blockorder, if_output=True, dict_output=dict_output)
+            if dim == 0:
+                blockorder = self.list_reverse(blockorder, 0, -1)
+                global_tensor_shape = self.list_reverse(global_tensor_shape, 0, -1)
+
+            fft_code += self.globalAccess(blockorder[dim], global_tensor_shape, 
+                        blockorder[threadblock_bs_dim], threadblock_bs, WorkerFFTSize,
+                            blockorder, if_output=True, dict_output=dict_output, if_twiddle=(dim!=0))
 
             fft += epilogue()
             self.fft.append(fft_code)
@@ -88,43 +90,69 @@ class TurboFFT:
         return epilogue
 
     def globalAccess(self, dim, global_tensor_shape, threadblock_bs_dim, threadblock_bs, 
-                    WorkerFFTSize, blockorder, if_output=False, dict_output=None):
+                    WorkerFFTSize, blockorder, if_output=False, dict_output=None, if_twiddle=False):
 
         threadblock_tensor_shape = th.ones_like(global_tensor_shape)
         threadblock_tensor_shape[dim] = global_tensor_shape[dim]
         threadbock_tensor_shape[threadblock_bs_dim] = threadblock_bs
 
-        global2reg = '''
-        int bx = blockIdx.x;
-        int tx = threadIdx.x;
+        globalAccess_code = '''
+        bx = blockIdx.x;
+        tx = threadIdx.x;
         '''
+
+        if if_twiddle:
+            globalAccess_code += '''
+        global_j = 0;
+        global_k = 0;
+        '''
+
         access_stride = 1
         
         for i in blockorder:
             stride = max(1, th.prod(global_tensor_shape[:i]))
-            global2reg += f'''
-            {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
-            bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
+            if i < dim and if_twiddle:
+                globalAccess_code += f'''
+                global_j += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
             '''
+                if i == threadblock_bs_dim:
+                    globalAccess_code += f'''
+                global_j += (tx % {threadblock_bs}) * {stride};
+            '''    
             if i == dim:
-                global2reg += f'''
+                globalAccess_code += f'''
                 {self.gPtr} += tx / {threadblock_bs} * {stride};
             '''
                 access_stride = global_tensor_shape[i] // WorkerFFTSize * stride
+            globalAccess_code += f'''
+            {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
+            bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
+            '''
             if i == threadblock_bs_dim:
-                global2reg += f'''
+                globalAccess_code += f'''
                 {self.gPtr} += tx % {threadblock_bs} * {stride};
             '''
             stride *= global_tensor_shape[i]
-        
+        if if_twiddle:
+            globalAccess_code += f'''
+            global_k += tx / {threadblock_bs};
+            '''
         
         for i in range(WorkerFFTSize):
             if not if_output:
-                global2reg += f'''
+                globalAccess_code += f'''
                 {self.rPtr}[{i}] = ({self.gPtr} + {i * access_stride});
                 '''
             else:
-                global2reg += f'''
+                if if_twiddle:
+                    N = th.prod(global_tensor_shape[:(dim + 1)])
+                    reg2shared_code += f'''
+                    angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
+                    angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
+                    tmp = {self.rPtr}[{dict_output[output_id]}];
+                    turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
+                '''
+                globalAccess_code += f'''
                 ({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
                 '''
 
@@ -194,11 +222,14 @@ class TurboFFT:
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
         for output_id in range(WorkerFFTSize): 
             print(output_id, dict_output[output_id])
+            if dim != len(threadblock_tensor_shape) - 1
+                reg2shared_code += f'''
+                    angle.x = cos(-2 * M_PI * {output_id} * j / {N});
+                    angle.y = sin(-2 * M_PI * {output_id} * j / {N});
+                    tmp = {self.rPtr}[{dict_output[output_id]}];
+                    turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
+                '''
             reg2shared_code += f'''
-            angle.x = cos(-2 * M_PI * {output_id} * j / {N});
-            angle.y = sin(-2 * M_PI * {output_id} * j / {N});
-            tmp = {self.rPtr}[{dict_output[output_id]}];
-            turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
             {self.shPtr}[offset + {access_stride * output_id}] = {self.rPtr}[{dict_output[output_id]}];
             '''
         return reg2shared_code
