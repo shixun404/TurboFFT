@@ -11,3 +11,8 @@
 #include "utils/compareData.h"
 #include "utils/printData.h"
 #include "utils/initializeData.h"
+
+void (*turboFFTArr[2][2])() = {
+    {fft_radix_2_logN_1_dim_0, NULL},
+    {fft_radix_2_logN_2_dim_0, NULL}
+};

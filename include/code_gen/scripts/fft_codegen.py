@@ -140,7 +140,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
 
         access_stride = 1
         
-        for i in blockorder:
+        for i in blockorder[:-1]:
             stride = max(1, th.prod(global_tensor_shape[:i]))
             if i < dim and if_twiddle:
                 globalAccess_code += f'''
@@ -167,6 +167,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         if if_twiddle:
             globalAccess_code += f'''
     global_k += tx / {threadblock_bs};
+    '''
+        globalAccess_code += f'''
+    {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])};
     '''
         
         for i in range(WorkerFFTSize):
@@ -314,25 +317,25 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         return fft_reg_code
 
 if __name__ == '__main__':
+    params = []
+    with open("../../include/param/param.csv", 'r') as file:
+        for line in file:
+            # Splitting each line by comma
+            split_elements = line.strip().split(',')
+            row = [int(element) for element in split_elements]
+            params.append(row)
+    
     # global_tensor_shape = [256, 256, 128, 1]
-    global_tensor_shape = [4, 1]
-    WorkerFFTSizes = [4]
-    fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes)
-    fft.codegen()
-    fft.save_generated_code()
-    # print(fft.fft_code[0])
-    # fft.fft_reg(0)
-    # fft.data = fft.output.clone()
-    # fft.fft_reg(1)
-    # fft.data = fft.output.clone()
-    # # torch_fft_result = th.fft.fft(fft.data).flatten()
-    # torch_fft_result = th.fft.fft(fft.data.reshape(fft.WorkerFFTSize // 4, 4), dim=0).flatten()
-    # fft.fft_reg(2)
-    # print(fft.output)
-    # print(torch_fft_result)
-    # rel_err = th.norm(fft.output - torch_fft_result) / th.norm(torch_fft_result)
-    # print(f"Rel_ERR = {rel_err}")
-    # if rel_err > 1e-3:
-    #     print("Error!\n")
-    # else:
-    #     print("Passed!\n")
+    for row in params:
+        global_tensor_shape = row[2:(2 + row[0])]
+        threadblock_bs = row[5:(5 + row[0])]
+        WorkerFFTSizes = row[8:(8 + row[0])]
+        threadblock_bs.reverse()
+        global_tensor_shape.reverse()
+        WorkerFFTSizes.reverse()
+        global_tensor_shape.append(1)
+        threadblock_bs_dim = [1, 0, 0]
+        fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes,
+                        threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[:row[0]])
+        fft.codegen()
+        fft.save_generated_code()
