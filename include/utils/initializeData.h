@@ -3,6 +3,8 @@ namespace utils{
     template <typename DataType>
     void initializeData(DataType *&input, DataType *&input_d, DataType *&output_d, 
                     DataType *&output_turbofft, DataType *&output_cufft, long long int N, long long int bs){
+    int random_seed = 10;  
+    srandom(random_seed); 
     bs = bs;
     input = (DataType*)calloc(N * bs, sizeof(DataType));
     output_turbofft = (DataType*)calloc(N * bs, sizeof(DataType));
@@ -18,8 +20,8 @@ namespace utils{
     printf("Intiliaze output_d status %d\n", res);
     if(res) exit(-1);
     for(int i = 0; i < N * bs; ++i){
-        input[i].x = 1;
-        input[i].y = 1;
+        input[i].x = (double)(random() % 100) / (double)100;
+        input[i].y = (double)(random() % 100) / (double)100;
     }
 
     checkCudaErrors(cudaMemcpy((void*)input_d, (void*)input, N * bs * sizeof(DataType), cudaMemcpyHostToDevice));

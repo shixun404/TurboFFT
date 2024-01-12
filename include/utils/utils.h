@@ -31,29 +31,3 @@
 // //     exit(EXIT_FAILURE);
 // //   }
 // // }
-
-
-namespace utils{
-std::vector<int> split(const std::string& s, char delimiter) {
-    std::vector<int> tokens;
-    std::string token;
-    std::istringstream tokenStream(s);
-    while (std::getline(tokenStream, token, delimiter)) {
-        tokens.push_back(std::stoi(token));
-    }
-    return tokens;
-}
-
-std::vector<std::vector<int>> load_parameters(
-    string param_path="include/param/param.csv"){
-    std::ifstream file(param_path);
-    std::vector<std::vector<int>> data;
-    std::string line;
-
-    while (std::getline(file, line)) {
-        std::vector<int> row = split(line, ',');
-        data.push_back(row);
-    }
-    return data;
-}
-}
