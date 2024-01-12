@@ -1,3 +1,5 @@
 build/*
 .vscode/*
 *.sh
+**/__pycache__/
+**/generated/
