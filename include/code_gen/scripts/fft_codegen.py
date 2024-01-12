@@ -17,16 +17,6 @@ class TurboFFT:
         self.state_vec = th.zeros(32, 5)
         self.data = th.rand(self.WorkerFFTSizes, dtype=th.cfloat)
         self.output = th.zeros(self.WorkerFFTSizes, dtype=th.cfloat)
-        self.local_variable = {
-            "bx": ("int", "blockIdx.x"),
-            "tx": ("int", "threadIdx.x"),
-            "offset": ("int", "0"),
-            self.gPtr: (f"*{self.data_type}", "inputs"),
-            self.shPtr: (f"*{self.data_type}", "outputs"),
-            f"{self.rPtr}[{self.WorkerFFTSizes}]": (self.data_type, None),
-            "tmp": (self.data_type, None),
-            "angle": (self.data_type, None),
-        }
         for i in range(32):
             for j in range(5):
                 self.state_vec[i, j] = int((i // (2 ** j))) % 2
@@ -39,6 +29,20 @@ class TurboFFT:
                 N_tmp /= size
             threadblock_tensor_shape.reverse()
             self.threadblock_tensor_shape.append(threadblock_tensor_shape)
+    def init(self, dim=0):
+        self.local_variable = {
+            "j" : ("int", "0"),
+            "k" : ("int", "0"),
+            "bx": ("int", "blockIdx.x"),
+            "tx": ("int", "threadIdx.x"),
+            "offset": ("int", "0"),
+            self.gPtr: (f"{self.data_type}*", "inputs"),
+            self.shPtr: (f"{self.data_type}*", "outputs"),
+            f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
+            "tmp": (self.data_type, None),
+            "angle": (self.data_type, None),
+        }
+
 
     def save_generated_code(self, ):
         N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
@@ -52,6 +56,7 @@ class TurboFFT:
         reg_tensor_stride = th.as_tensor([1, 2, 4, 8, 16, 32, 64], dtype=th.float)
         state_vec = self.state_vec.clone()
         for dim in range(len(self.global_tensor_shape) - 2, -1, -1):
+            self.init(dim)
             fft_code = self.head(len(self.global_tensor_shape) - 2 - dim)
 
             threadblock_tensor_shape =  self.threadblock_tensor_shape[dim]
@@ -66,8 +71,9 @@ class TurboFFT:
                                      blockorder)
             for threadblock_dim in range(len(threadblock_tensor_shape)):
                 self.state_vec = state_vec[:, :logWorkerFFTSize]
-                fft_code += self.shared2reg(threadblock_bs, threadblock_tensor_shape,
-                                         WorkerFFTSize)
+                if threadblock_dim != 0:
+                    fft_code += self.shared2reg(threadblock_bs, threadblock_tensor_shape,
+                                            WorkerFFTSize)
                 fft_code += self.fft_reg(threadblock_bs, threadblock_tensor_shape, 
                                     WorkerFFTSize, threadblock_dim, reg_tensor_stride[:logWorkerFFTSize])
                 dict_output = self.reg_output_remap(WorkerFFTSize // threadblock_tensor_shape[-1], 
@@ -161,7 +167,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         for i in range(WorkerFFTSize):
             if not if_output:
                 globalAccess_code += f'''
-    {self.rPtr}[{i}] = ({self.gPtr} + {i * access_stride});
+    {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
     '''
             else:
                 if if_twiddle:
@@ -173,7 +179,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''
                 globalAccess_code += f'''
-    ({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
+    *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
     '''
         return globalAccess_code
 
@@ -285,9 +291,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                 rel_bounds = 1e-8
                 abs_bounds = 1e-5
                 fft_reg_code += f'''
-    tmp = {self.rPtr}[{id_j1}] 
-    {self.rPtr}[{id_j1}] = turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
-    {self.rPtr}[{id_j2}] = turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
+    tmp = {self.rPtr}[{id_j1}];
+    turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
+    turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
     angle.x = {0 if np.allclose(0, cos(tmp_angle), rel_bounds, abs_bounds) else cos(tmp_angle)};
     angle.y = {0 if np.allclose(0, sin(tmp_angle), rel_bounds, abs_bounds) else sin(tmp_angle)};
     tmp = {self.rPtr}[{id_j2}];
@@ -304,8 +310,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
 
 if __name__ == '__main__':
     # global_tensor_shape = [256, 256, 128, 1]
-    global_tensor_shape = [256, 1]
-    WorkerFFTSizes = [16]
+    global_tensor_shape = [4, 1]
+    WorkerFFTSizes = [4]
     fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes)
     fft.codegen()
     fft.save_generated_code()
