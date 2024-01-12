@@ -267,8 +267,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             print(output_id, dict_output[output_id])
             if dim != len(threadblock_tensor_shape) - 1:
                 reg2shared_code += f'''
-    angle.x = cos(-2 * M_PI * {output_id} * j / {N});
-    angle.y = sin(-2 * M_PI * {output_id} * j / {N});
+    angle.x = cos(M_PI * {-2 * output_id / N} * j);
+    angle.y = sin(M_PI * {-2 * output_id / N} * j);
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''
@@ -317,8 +317,30 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     tmp = {self.rPtr}[{id_j1}];
     turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
     turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
-    angle.x = {0 if np.allclose(0, cos(tmp_angle), rel_bounds, abs_bounds) else cos(tmp_angle)};
-    angle.y = {0 if np.allclose(0, sin(tmp_angle), rel_bounds, abs_bounds) else sin(tmp_angle)};
+    '''
+                if np.allclose(0, cos(tmp_angle), rel_bounds, abs_bounds):
+                    if np.allclose(1, sin(tmp_angle), rel_bounds, abs_bounds):
+                        fft_reg_code += f'''
+    {self.rPtr}[{id_j2}].y = tmp.x;
+    {self.rPtr}[{id_j2}].x = -tmp.y;
+    '''
+                    else:
+                        fft_reg_code += f'''
+    {self.rPtr}[{id_j2}].y = -tmp.x;
+    {self.rPtr}[{id_j2}].x = tmp.y;
+    '''
+                elif np.allclose(0, sin(tmp_angle), rel_bounds, abs_bounds):
+                    if np.allclose(1, cos(tmp_angle), rel_bounds, abs_bounds):
+                        pass
+                    else:
+                        fft_reg_code += f'''
+    {self.rPtr}[{id_j2}].x = -tmp.x;
+    {self.rPtr}[{id_j2}].y = -tmp.y;
+    '''
+                else:
+                    fft_reg_code += f'''
+    angle.x = {cos(tmp_angle)};
+    angle.y = {sin(tmp_angle)};
     tmp = {self.rPtr}[{id_j2}];
     turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
     '''

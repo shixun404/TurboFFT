@@ -68,6 +68,7 @@ void test_cufft<double2>(double2* input_d, double2* output_d,
         checkCudaErrors(cufftExecZ2Z(plan, reinterpret_cast<cufftDoubleComplex*>(input_d), 
                         reinterpret_cast<cufftDoubleComplex*>(output_d), 
                         CUFFT_FORWARD));
+        cudaDeviceSynchronize();
     }
     cudaEventRecord(fft_end);
     cudaEventSynchronize(fft_begin);

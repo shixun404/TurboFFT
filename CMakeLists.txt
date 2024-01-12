@@ -4,6 +4,9 @@ project(turbofft LANGUAGES CXX CUDA)
 # Set CUDA architecture
 set(CMAKE_CUDA_ARCHITECTURES 80)
 
+# Add -O3 optimization flag for CUDA
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3")
+
 # Find CUDA package
 find_package(CUDA REQUIRED)
 

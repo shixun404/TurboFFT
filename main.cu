@@ -86,8 +86,8 @@ int main(int argc, char *argv[]){
     utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
 
     // Profiling
-    test_turbofft(input_d, output_d, output_turbofft, params[logN], bs, ntest);
-    profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+    // test_turbofft(input_d, output_d, output_turbofft, params[logN], bs, ntest);
+    // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
     
     cudaFree(input_d);
     cudaFree(output_d);
