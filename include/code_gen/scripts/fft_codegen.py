@@ -37,7 +37,7 @@ class TurboFFT:
             "tx": ("int", "threadIdx.x"),
             "offset": ("int", "0"),
             self.gPtr: (f"{self.data_type}*", "inputs"),
-            self.shPtr: (f"{self.data_type}*", "outputs"),
+            self.shPtr: (f"{self.data_type}*", "shared"),
             f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
             "tmp": (self.data_type, None),
             "angle": (self.data_type, None),
@@ -124,10 +124,15 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         threadblock_tensor_shape[dim] = global_tensor_shape[dim]
         threadblock_tensor_shape[threadblock_bs_dim] = threadblock_bs
 
-        globalAccess_code = '''bx = blockIdx.x;
+        globalAccess_code = f'''bx = blockIdx.x;
     tx = threadIdx.x;
+    ''' 
+        if if_output:
+            globalAccess_code += f'''{self.gPtr} = {self.local_variable[self.gPtr][1]};
     '''
-
+        else:
+            globalAccess_code += f'''{self.gPtr} = outputs;
+    '''
         if if_twiddle:
             globalAccess_code += '''global_j = 0;
     global_k = 0;
