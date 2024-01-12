@@ -3,7 +3,7 @@ from math import *
 import numpy as np
 class TurboFFT:
     def __init__(self, global_tensor_shape=[256, 1], radix=2, WorkerFFTSizes = [8],
-                        threadblock_bs=[1], threadblock_bs_dim=[0], data_type='double'):
+                        threadblock_bs=[1], threadblock_bs_dim=[0], data_type='double2'):
         self.fft_code = []
         self.data_type = data_type
         self.gPtr = "gPtr"
@@ -17,6 +17,16 @@ class TurboFFT:
         self.state_vec = th.zeros(32, 5)
         self.data = th.rand(self.WorkerFFTSizes, dtype=th.cfloat)
         self.output = th.zeros(self.WorkerFFTSizes, dtype=th.cfloat)
+        self.local_variable = {
+            "bx": ("int", "blockIdx.x"),
+            "tx": ("int", "threadIdx.x"),
+            "offset": ("int", "0"),
+            self.gPtr: (f"*{self.data_type}", "inputs"),
+            self.shPtr: (f"*{self.data_type}", "outputs"),
+            f"{self.rPtr}[{self.WorkerFFTSizes}]": (self.data_type, None),
+            "tmp": (self.data_type, None),
+            "angle": (self.data_type, None),
+        }
         for i in range(32):
             for j in range(5):
                 self.state_vec[i, j] = int((i // (2 ** j))) % 2
@@ -33,7 +43,7 @@ class TurboFFT:
     def save_generated_code(self, ):
         N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
         for i in range(len(self.global_tensor_shape) - 1):
-            file_name = f"../generated/fft_radix={self.radix}_logN={int(log(N, 2))}_upload={i}.cuh"
+            file_name = f"../generated/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
             with open(file_name, 'w') as f:
                 f.write(self.fft_code[i])
 
@@ -83,14 +93,22 @@ class TurboFFT:
     def head(self, dim):
         N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
         head = f'''extern __shared__ {self.data_type} shared[];
-        __global__ void fft_radix={self.radix}_logN={int(log(N, self.radix))}_dim={dim}''' \
-        + f'''({self.data_type}2* inputs, {self.data_type}2* outputs, {self.data_type}2* r_2)''' + ''' {
-        '''
+__global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}''' \
+        + f'''({self.data_type}* inputs, {self.data_type}* outputs)''' + ''' {
+    '''
+        for key in self.local_variable.keys():
+            head += f'''{self.local_variable[key][0]} {key};
+    '''
+        for key in self.local_variable.keys():
+            if self.local_variable[key][1] is not None:
+                head += f'''{key} = {self.local_variable[key][1]};
+    '''
         return head
     
     def epilogue(self, ):
         epilogue = '''
-        }'''
+}
+'''
         return epilogue
 
     def globalAccess(self, dim, global_tensor_shape, threadblock_bs_dim, threadblock_bs, 
@@ -100,16 +118,14 @@ class TurboFFT:
         threadblock_tensor_shape[dim] = global_tensor_shape[dim]
         threadblock_tensor_shape[threadblock_bs_dim] = threadblock_bs
 
-        globalAccess_code = '''
-        bx = blockIdx.x;
-        tx = threadIdx.x;
-        '''
+        globalAccess_code = '''bx = blockIdx.x;
+    tx = threadIdx.x;
+    '''
 
         if if_twiddle:
-            globalAccess_code += '''
-        global_j = 0;
-        global_k = 0;
-        '''
+            globalAccess_code += '''global_j = 0;
+    global_k = 0;
+    '''
 
         access_stride = 1
         
@@ -117,48 +133,48 @@ class TurboFFT:
             stride = max(1, th.prod(global_tensor_shape[:i]))
             if i < dim and if_twiddle:
                 globalAccess_code += f'''
-                global_j += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
-            '''
+    global_j += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
+    '''
                 if i == threadblock_bs_dim:
                     globalAccess_code += f'''
-                global_j += (tx % {threadblock_bs}) * {stride};
-            '''    
+    global_j += (tx % {threadblock_bs}) * {stride};
+    '''    
             if i == dim:
                 globalAccess_code += f'''
-                {self.gPtr} += tx / {threadblock_bs} * {stride};
-            '''
+    {self.gPtr} += tx / {threadblock_bs} * {stride};
+    '''
                 access_stride = global_tensor_shape[i] // WorkerFFTSize * stride
             globalAccess_code += f'''
-            {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
-            bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
-            '''
+    {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
+    bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
+    '''
             if i == threadblock_bs_dim:
                 globalAccess_code += f'''
-                {self.gPtr} += tx % {threadblock_bs} * {stride};
-            '''
+    {self.gPtr} += tx % {threadblock_bs} * {stride};
+    '''
             stride *= global_tensor_shape[i]
         if if_twiddle:
             globalAccess_code += f'''
-            global_k += tx / {threadblock_bs};
-            '''
+    global_k += tx / {threadblock_bs};
+    '''
         
         for i in range(WorkerFFTSize):
             if not if_output:
                 globalAccess_code += f'''
-                {self.rPtr}[{i}] = ({self.gPtr} + {i * access_stride});
-                '''
+    {self.rPtr}[{i}] = ({self.gPtr} + {i * access_stride});
+    '''
             else:
                 if if_twiddle:
                     N = th.prod(global_tensor_shape[:(dim + 1)])
                     reg2shared_code += f'''
-                    angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
-                    angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
-                    tmp = {self.rPtr}[{dict_output[output_id]}];
-                    turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
-                '''
+    angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
+    angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
+    tmp = {self.rPtr}[{dict_output[output_id]}];
+    turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
+    '''
                 globalAccess_code += f'''
-                ({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
-                '''
+    ({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
+    '''
         return globalAccess_code
 
     def list_reverse(self, list_, st, end):
@@ -175,16 +191,16 @@ class TurboFFT:
         access_stride = int(threadblock_bs * th.prod(th.as_tensor(threadblock_tensor_shape))
                          / WorkerFFTSize)
         shared2reg_code += f'''
-        offset += tid;
-        '''
+    offset += tx;
+    '''
         
         shared2reg_code += '''
-            __syncthreads();
-        '''
+    __syncthreads();
+    '''
         for i in range(WorkerFFTSize):
             shared2reg_code += f'''
-            {self.rPtr}[{i}] = {self.shPtr}[offset + {access_stride * i}];
-        '''
+    {self.rPtr}[{i}] = {self.shPtr}[offset + {access_stride * i}];
+    '''
         return shared2reg_code
 
     def reg_output_remap(self, bs, reg_tensor_stride, WorkerFFTSize):
@@ -201,8 +217,8 @@ class TurboFFT:
 
     def reg2shared(self, threadblock_bs, threadblock_tensor_shape, WorkerFFTSize, dim, dict_output):
         reg2shared_code = '''
-        j = 0;
-        '''
+    j = 0;
+    '''
 
         # threadId to tensor coordinates
         tmp = 1
@@ -215,32 +231,32 @@ class TurboFFT:
             if i == dim + 1:
                 access_stride = int(stride / bs_tensor_shape[i])
                 reg2shared_code += f'''
-                j = tx / {tmp};
-            '''
+    j = tx / {tmp};
+    '''
                 continue
             reg2shared_code += f'''
-            offset += ((tid / {tmp}) % {bs_tensor_shape[i]}) * {stride};
-            '''
+    offset += ((tx / {tmp}) % {bs_tensor_shape[i]}) * {stride};
+    '''
             tmp *= bs_tensor_shape[i]
 
         if dim == len(threadblock_tensor_shape) - 1:
             access_stride = int(threadblock_bs * th.prod(th.as_tensor(threadblock_tensor_shape)) / self.WorkerFFTSize)
         reg2shared_code += '''
-        __syncthreads();
-        '''
+    __syncthreads();
+    '''
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
         for output_id in range(WorkerFFTSize): 
             print(output_id, dict_output[output_id])
             if dim != len(threadblock_tensor_shape) - 1:
                 reg2shared_code += f'''
-                    angle.x = cos(-2 * M_PI * {output_id} * j / {N});
-                    angle.y = sin(-2 * M_PI * {output_id} * j / {N});
-                    tmp = {self.rPtr}[{dict_output[output_id]}];
-                    turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
-                '''
+    angle.x = cos(-2 * M_PI * {output_id} * j / {N});
+    angle.y = sin(-2 * M_PI * {output_id} * j / {N});
+    tmp = {self.rPtr}[{dict_output[output_id]}];
+    turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
+    '''
             reg2shared_code += f'''
-            {self.shPtr}[offset + {access_stride * output_id}] = {self.rPtr}[{dict_output[output_id]}];
-            '''
+    {self.shPtr}[offset + {access_stride * output_id}] = {self.rPtr}[{dict_output[output_id]}];
+    '''
         return reg2shared_code
     
     def fft_reg(self, threadblock_bs, threadblock_tensor_shape, WorkerFFTSize, dim, reg_tensor_stride):
@@ -269,14 +285,14 @@ class TurboFFT:
                 rel_bounds = 1e-8
                 abs_bounds = 1e-5
                 fft_reg_code += f'''
-                tmp = {self.rPtr}[{id_j1}] 
-                {self.rPtr}[{id_j1}] = turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
-                {self.rPtr}[{id_j2}] = turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
-                angle.x = {0 if np.allclose(0, cos(tmp_angle), rel_bounds, abs_bounds) else cos(tmp_angle)};
-                angle.y = {0 if np.allclose(0, sin(tmp_angle), rel_bounds, abs_bounds) else sin(tmp_angle)};
-                tmp = {self.rPtr}[{id_j2}];
-                turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
-                '''
+    tmp = {self.rPtr}[{id_j1}] 
+    {self.rPtr}[{id_j1}] = turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
+    {self.rPtr}[{id_j2}] = turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
+    angle.x = {0 if np.allclose(0, cos(tmp_angle), rel_bounds, abs_bounds) else cos(tmp_angle)};
+    angle.y = {0 if np.allclose(0, sin(tmp_angle), rel_bounds, abs_bounds) else sin(tmp_angle)};
+    tmp = {self.rPtr}[{id_j2}];
+    turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
+    '''
 
                 tmp = self.data[id_j1].item()
                 self.data[id_j1] = tmp + self.data[id_j2]
@@ -293,7 +309,7 @@ if __name__ == '__main__':
     fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes)
     fft.codegen()
     fft.save_generated_code()
-    print(fft.fft_code[0])
+    # print(fft.fft_code[0])
     # fft.fft_reg(0)
     # fft.data = fft.output.clone()
     # fft.fft_reg(1)
