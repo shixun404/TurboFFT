@@ -8,6 +8,7 @@ class TurboFFT:
         self.data_type = data_type
         self.gPtr = "gPtr"
         self.rPtr = "rPtr"
+        self.rPtr_2 = "rPtr_2"
         self.shPtr = "shPtr"
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
@@ -39,6 +40,7 @@ class TurboFFT:
             self.gPtr: (f"{self.data_type}*", "inputs"),
             self.shPtr: (f"{self.data_type}*", "shared"),
             f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
+            f"{self.rPtr_2}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
             "tmp": (self.data_type, None),
             "angle": (self.data_type, None),
         }
@@ -270,9 +272,20 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''
-            reg2shared_code += f'''
+            if dim == 0:
+                reg2shared_code += f'''
+    {self.rPtr_2}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
+    '''
+            else:
+                reg2shared_code += f'''
     {self.shPtr}[offset + {access_stride * output_id}] = {self.rPtr}[{dict_output[output_id]}];
     '''
+        if dim == 0:
+            for output_id in range(WorkerFFTSize):
+                reg2shared_code += f'''
+        k = (({output_id} + (threadIdx.x / {threadblock_bs}) % {WorkerFFTSize}) % {WorkerFFTSize});
+        {self.shPtr}[offset + {access_stride} * k] = {self.rPtr_2}[k];
+        '''
         return reg2shared_code
     
     def fft_reg(self, threadblock_bs, threadblock_tensor_shape, WorkerFFTSize, dim, reg_tensor_stride):
