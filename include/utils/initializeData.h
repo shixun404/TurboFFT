@@ -3,13 +3,20 @@ namespace utils{
     template <typename DataType>
     void initializeData(DataType *&input, DataType *&input_d, DataType *&output_d, 
                     DataType *&output_turbofft, DataType *&output_cufft, long long int N, long long int bs){
-    bs = bs + 3;
+    bs = bs;
     input = (DataType*)calloc(N * bs, sizeof(DataType));
     output_turbofft = (DataType*)calloc(N * bs, sizeof(DataType));
     output_cufft = (DataType*)calloc(N * bs, sizeof(DataType));
-    checkCudaErrors(cudaMalloc((void**)&input_d, sizeof(DataType) * N * bs));
-    checkCudaErrors(cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs));
+    int res = cudaMalloc((void**)&input_d, sizeof(DataType) * N * bs);
     
+    printf("%lld, %lld, %lld, %lld\n", sizeof(DataType), N, bs,
+    (long long int)sizeof(DataType) * (long long int)N * (long long int)bs);
+    printf("Intiliaze input_d status %d\n", res);
+    if(res) exit(-1);
+    // checkCudaErrors(cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs));
+    res = cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs);
+    printf("Intiliaze output_d status %d\n", res);
+    if(res) exit(-1);
     for(int i = 0; i < N * bs; ++i){
         input[i].x = 1;
         input[i].y = 1;

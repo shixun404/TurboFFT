@@ -16,7 +16,7 @@ template<>
 void test_cufft_ft<float2>(float2* input_d, float2* output_d, float2* output_cufft,
                             float2* e_d, float2* x_i_c, float2* x_o_c,
                             long long int N, size_t bs, int ntest) {
-    cufftHandle plan;
+    cufftHandle plan, plan_ft;
     cublasHandle_t handle;         
     float gflops, elapsed_time;
     cuComplex alpha = {1, 1}, beta = {0, 0};
@@ -25,8 +25,10 @@ void test_cufft_ft<float2>(float2* input_d, float2* output_d, float2* output_cuf
     
 
     checkCudaErrors(cufftCreate(&plan));
+    checkCudaErrors(cufftCreate(&plan_ft));
 
-    checkCudaErrors(cufftPlan1d(&plan, N, CUFFT_C2C, bs));
+    checkCudaErrors(cufftPlan1d(&plan, N, CUFFT_C2C, bs + 1));
+    checkCudaErrors(cufftPlan1d(&plan_ft, N, CUFFT_C2C, 16));
 
 
     cudaEventCreate(&fft_begin);
@@ -41,13 +43,21 @@ void test_cufft_ft<float2>(float2* input_d, float2* output_d, float2* output_cuf
         //     printf("cuBLASCGEMM ERROR!\n");
         //     return;
         // }
-        cublasCgemm(handle, CUBLAS_OP_N,CUBLAS_OP_N, N, 1, bs, &alpha, 
-                                    reinterpret_cast<cuComplex*>(input_d), N, 
-                                    reinterpret_cast<cuComplex*>(e_d), bs, &beta, 
-                                    reinterpret_cast<cuComplex*>(x_i_c), N);
+        // cublasCgemv(handle, CUBLAS_OP_N, N, bs / 8, &alpha, 
+        //                             reinterpret_cast<cuComplex*>(input_d), N, 
+        //                             reinterpret_cast<cuComplex*>(e_d), 1, &beta, 
+        //                             reinterpret_cast<cuComplex*>(x_i_c), 1);
+        // cublasSgemv(handle, CUBLAS_OP_N, N * 2, bs / 16, (float*)&(alpha), 
+        //                             reinterpret_cast<float*>(input_d), N * 2, 
+        //                             reinterpret_cast<float*>(e_d), 1, (float*)&(beta), 
+        //                             reinterpret_cast<float*>(x_i_c), 1);
         checkCudaErrors(cufftExecC2C(plan, reinterpret_cast<cufftComplex*>(input_d), 
                      reinterpret_cast<cufftComplex*>(output_d), 
                      CUFFT_FORWARD));
+        checkCudaErrors(cufftExecC2C(plan_ft, reinterpret_cast<cufftComplex*>(input_d), 
+                     reinterpret_cast<cufftComplex*>(output_d), 
+                     CUFFT_FORWARD));
+        
         // if(cublasCgemm(handle, CUBLAS_OP_N,CUBLAS_OP_N, N, 1, bs, &alpha, 
         //                             reinterpret_cast<cuComplex*>(output_d), N, 
         //                             reinterpret_cast<cuComplex*>(e_d), bs, &beta, 
@@ -55,10 +65,14 @@ void test_cufft_ft<float2>(float2* input_d, float2* output_d, float2* output_cuf
         //     printf("cuBLASCGEMM ERROR!\n");
         //     return;
         // }
-        cublasCgemm(handle, CUBLAS_OP_N,CUBLAS_OP_N, N, 1, bs, &alpha, 
-                                    reinterpret_cast<cuComplex*>(output_d), N, 
-                                    reinterpret_cast<cuComplex*>(e_d), bs, &beta, 
-                                    reinterpret_cast<cuComplex*>(x_o_c), N);
+        // cublasCgemv(handle, CUBLAS_OP_N, N, bs / 8, &alpha, 
+        //                             reinterpret_cast<cuComplex*>(output_d), N, 
+        //                             reinterpret_cast<cuComplex*>(e_d), 1, &beta, 
+        //                             reinterpret_cast<cuComplex*>(x_o_c), 1);
+        // cublasSgemv(handle, CUBLAS_OP_N, N * 2, bs / 16, (float*)&(alpha), 
+        //                             reinterpret_cast<float*>(output_d), N * 2, 
+        //                             reinterpret_cast<float*>(e_d), 1, (float*)&(beta), 
+        //                             reinterpret_cast<float*>(x_o_c), 1);
         // checkCudaErrors(cublasCgemm(handle, CUBLAS_OP_N,CUBLAS_OP_N, N, 1, bs, &alpha, output_d, N, e_d, bs, &beta, x_o_c, N));
     }
     cudaEventRecord(fft_end);

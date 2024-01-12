@@ -9,3 +9,8 @@
 #define MY_MUL_REPLACE(a, b, c, d) d.x = a.x * b.x - a.y * b.y; d.y = a.y * b.x + a.x * b.y; c = d;
 // #define MY_MUL_REPLACE(a, b, c, d) d.x += a.x * b.x - a.y * b.y; d.y += a.y * b.x + a.x * b.y; c.x += d.x;c.y += d.y;
 #define MY_ANGLE2COMPLEX(angle, a) a.x = __cosf(angle); a.y =  __sinf(angle); 
+
+
+#define turboFFT_ZADD(c, a, b) c.x = a.x + b.x; c.y = a.y + b.y;
+#define turboFFT_ZSUB(c, a, b) c.x = a.x - b.x; c.y = a.y - b.y;
+#define turboFFT_ZMUL(c, a, b) c.x = a.x * b.x - a.y * b.y; c.y = a.y * b.x + a.x * b.y;
