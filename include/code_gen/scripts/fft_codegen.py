@@ -3,22 +3,23 @@ from math import *
 import numpy as np
 class TurboFFT:
     def __init__(self, global_tensor_shape=[256, 1], radix=2, WorkerFFTSizes = [8],
-                        threadblock_bs=[1], data_type='double'):
-        self.fft = ''''''
+                        threadblock_bs=[1], threadblock_bs_dim=[0], data_type='double'):
+        self.fft_code = []
         self.data_type = data_type
         self.gPtr = "gPtr"
         self.rPtr = "rPtr"
         self.shPtr = "shPtr"
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
-        self.threadblock_bs_dim = [0, 0, 1]
+        self.threadblock_bs_dim = threadblock_bs_dim
         self.global_tensor_shape = global_tensor_shape
+        self.radix = radix
         self.state_vec = th.zeros(32, 5)
         self.data = th.rand(self.WorkerFFTSizes, dtype=th.cfloat)
         self.output = th.zeros(self.WorkerFFTSizes, dtype=th.cfloat)
         for i in range(32):
             for j in range(5):
-                self.state_vec[i, j] = (i // (2 ** j)) % 2
+                self.state_vec[i, j] = int((i // (2 ** j))) % 2
 
         self.threadblock_tensor_shape = []
         for size, N_tmp in zip(WorkerFFTSizes, self.global_tensor_shape[:-1]):
@@ -29,37 +30,39 @@ class TurboFFT:
             threadblock_tensor_shape.reverse()
             self.threadblock_tensor_shape.append(threadblock_tensor_shape)
 
+    def save_generated_code(self, ):
+        N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
+        for i in range(len(self.global_tensor_shape) - 1):
+            file_name = f"../generated/fft_radix={self.radix}_logN={int(log(N, 2))}_upload={i}.cuh"
+            with open(file_name, 'w') as f:
+                f.write(self.fft_code[i])
 
     def codegen(self,):
-        # reg_tensor_stride = [1, 2, 4, ...]
-        reg_tensor_stride = th.zeros(logWorkerFFTSize)
-        i = 0
-        strd = 1
-        while strd < self.WorkerFFTSize:
-                reg_tensor_stride[i] = strd
-                i += 1
-                strd *= 2
 
-        
+        reg_tensor_stride = th.as_tensor([1, 2, 4, 8, 16, 32, 64], dtype=th.float)
+        state_vec = self.state_vec.clone()
         for dim in range(len(self.global_tensor_shape) - 2, -1, -1):
-            fft_code = self.head(dim)
+            fft_code = self.head(len(self.global_tensor_shape) - 2 - dim)
 
             threadblock_tensor_shape =  self.threadblock_tensor_shape[dim]
             threadblock_bs = self.threadblock_bs[dim]
             threadblock_bs_dim = self.threadblock_bs_dim[dim]
             WorkerFFTSize = self.WorkerFFTSizes[dim]
+            logWorkerFFTSize = int(log(WorkerFFTSize, 2))
             global_tensor_shape = self.global_tensor_shape
             blockorder = [i for i in range(len(global_tensor_shape))]
             fft_code += self.globalAccess(dim, global_tensor_shape, 
                                     threadblock_bs_dim, threadblock_bs, WorkerFFTSize,
                                      blockorder)
-            for threadblock_dim in len(threadblock_tensor_shape):
+            for threadblock_dim in range(len(threadblock_tensor_shape)):
+                self.state_vec = state_vec[:, :logWorkerFFTSize]
                 fft_code += self.shared2reg(threadblock_bs, threadblock_tensor_shape,
                                          WorkerFFTSize)
                 fft_code += self.fft_reg(threadblock_bs, threadblock_tensor_shape, 
-                                    WorkerFFTSize, threadblock_dim, reg_tensor_stride)
-                dict_output = self.reg_output_remap(WorkerFFTSize // threadblock_tensor_shape[-1], reg_tensor_stride)
-                threadblock_tensor_shape = threadblock_tensor_shape[:threadblock_dim] + \ 
+                                    WorkerFFTSize, threadblock_dim, reg_tensor_stride[:logWorkerFFTSize])
+                dict_output = self.reg_output_remap(WorkerFFTSize // threadblock_tensor_shape[-1], 
+                                                    reg_tensor_stride[:logWorkerFFTSize], WorkerFFTSize)
+                threadblock_tensor_shape = threadblock_tensor_shape[:threadblock_dim] + \
                                             [threadblock_tensor_shape[-1]] + \
                                             threadblock_tensor_shape[threadblock_dim:-1]
                 
@@ -74,12 +77,13 @@ class TurboFFT:
                         blockorder[threadblock_bs_dim], threadblock_bs, WorkerFFTSize,
                             blockorder, if_output=True, dict_output=dict_output, if_twiddle=(dim!=0))
 
-            fft += epilogue()
-            self.fft.append(fft_code)
+            fft_code += self.epilogue()
+            self.fft_code.append(fft_code)
 
     def head(self, dim):
+        N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
         head = f'''extern __shared__ {self.data_type} shared[];
-        __global__ void fft_radix={self.radix}_logN={int(log(self.global_tensor_shape[dim], self.radix))}_dim={dim}''' \
+        __global__ void fft_radix={self.radix}_logN={int(log(N, self.radix))}_dim={dim}''' \
         + f'''({self.data_type}2* inputs, {self.data_type}2* outputs, {self.data_type}2* r_2)''' + ''' {
         '''
         return head
@@ -91,10 +95,10 @@ class TurboFFT:
 
     def globalAccess(self, dim, global_tensor_shape, threadblock_bs_dim, threadblock_bs, 
                     WorkerFFTSize, blockorder, if_output=False, dict_output=None, if_twiddle=False):
-
+        global_tensor_shape = th.as_tensor(global_tensor_shape)
         threadblock_tensor_shape = th.ones_like(global_tensor_shape)
         threadblock_tensor_shape[dim] = global_tensor_shape[dim]
-        threadbock_tensor_shape[threadblock_bs_dim] = threadblock_bs
+        threadblock_tensor_shape[threadblock_bs_dim] = threadblock_bs
 
         globalAccess_code = '''
         bx = blockIdx.x;
@@ -155,16 +159,21 @@ class TurboFFT:
                 globalAccess_code += f'''
                 ({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
                 '''
+        return globalAccess_code
 
     def list_reverse(self, list_, st, end):
-        target = list_[st:end]
-        target.reverse()
-        target = list_[:st] + target + list_[end:]
+        if isinstance(list_, list):
+            target = list_[st:end]
+            target.reverse()
+            target = list_[:st] + target + list_[end:]
+        else:
+            target = th.cat((list_[:st], list_[st:end].flip(0), list_[end:]), dim=0)
         return target
             
     def shared2reg(self, threadblock_bs, threadblock_tensor_shape, WorkerFFTSize):
         shared2reg_code  = ''''''
-        accesss_stride = int(threadblock_bs * th.prod(threadblock_tensor_shape) / WorkerFFTSize)
+        access_stride = int(threadblock_bs * th.prod(th.as_tensor(threadblock_tensor_shape))
+                         / WorkerFFTSize)
         shared2reg_code += f'''
         offset += tid;
         '''
@@ -172,13 +181,13 @@ class TurboFFT:
         shared2reg_code += '''
             __syncthreads();
         '''
-        for i in range(self.WorkerFFTSize):
+        for i in range(WorkerFFTSize):
             shared2reg_code += f'''
             {self.rPtr}[{i}] = {self.shPtr}[offset + {access_stride * i}];
         '''
         return shared2reg_code
 
-    def reg_output_remap(self, bs, reg_tensor_stride):
+    def reg_output_remap(self, bs, reg_tensor_stride, WorkerFFTSize):
         logbs = int(log(bs, 2))
         # Keep the leading stride of batch size, flip the following tensor stride
         # reg_tensor_stride_reverse = th.cat((reg_tensor_stride[:logbs], reg_tensor_stride[logbs:].flip(0)), dim=0)
@@ -222,7 +231,7 @@ class TurboFFT:
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
         for output_id in range(WorkerFFTSize): 
             print(output_id, dict_output[output_id])
-            if dim != len(threadblock_tensor_shape) - 1
+            if dim != len(threadblock_tensor_shape) - 1:
                 reg2shared_code += f'''
                     angle.x = cos(-2 * M_PI * {output_id} * j / {N});
                     angle.y = sin(-2 * M_PI * {output_id} * j / {N});
@@ -248,9 +257,10 @@ class TurboFFT:
         for i in range(st, logbs - 1, -1):
             print("*************************")
             print(reg_tensor_stride[i])
-            for j in range(self.WorkerFFTSize):
+            for j in range(WorkerFFTSize):
                 if self.state_vec[j, i] == 1:
                     continue
+                print(self.state_vec[j], reg_tensor_stride)
                 id_j1 = int(th.dot(self.state_vec[j], reg_tensor_stride))
                 id_j2 = int(id_j1 + reg_tensor_stride[i])
                 id_k = int(th.dot(self.state_vec[j, logbs:i], reg_tensor_stride[logbs:i]))                
@@ -277,22 +287,25 @@ class TurboFFT:
         return fft_reg_code
 
 if __name__ == '__main__':
-    global_tensor_shape = [256, 256, 128, 1]
-    WorkerFFTSizes = [8, 16, 16]
+    # global_tensor_shape = [256, 256, 128, 1]
+    global_tensor_shape = [256, 1]
+    WorkerFFTSizes = [16]
     fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes)
-    fft.fft_reg(0)
-    fft.data = fft.output.clone()
-    fft.fft_reg(1)
-    fft.data = fft.output.clone()
-    # torch_fft_result = th.fft.fft(fft.data).flatten()
-    torch_fft_result = th.fft.fft(fft.data.reshape(fft.WorkerFFTSize // 4, 4), dim=0).flatten()
-    fft.fft_reg(2)
-    print(fft.output)
-    print(torch_fft_result)
-    rel_err = th.norm(fft.output - torch_fft_result) / th.norm(torch_fft_result)
-    print(fft.fft)
-    print(f"Rel_ERR = {rel_err}")
-    if rel_err > 1e-3:
-        print("Error!\n")
-    else:
-        print("Passed!\n")
+    fft.codegen()
+    fft.save_generated_code()
+    print(fft.fft_code[0])
+    # fft.fft_reg(0)
+    # fft.data = fft.output.clone()
+    # fft.fft_reg(1)
+    # fft.data = fft.output.clone()
+    # # torch_fft_result = th.fft.fft(fft.data).flatten()
+    # torch_fft_result = th.fft.fft(fft.data.reshape(fft.WorkerFFTSize // 4, 4), dim=0).flatten()
+    # fft.fft_reg(2)
+    # print(fft.output)
+    # print(torch_fft_result)
+    # rel_err = th.norm(fft.output - torch_fft_result) / th.norm(torch_fft_result)
+    # print(f"Rel_ERR = {rel_err}")
+    # if rel_err > 1e-3:
+    #     print("Error!\n")
+    # else:
+    #     print("Passed!\n")
