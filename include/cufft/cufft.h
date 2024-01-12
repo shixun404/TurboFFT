@@ -80,7 +80,7 @@ void test_cufft<double2>(double2* input_d, double2* output_d,
     printf("cuFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
 
 
-    checkCudaErrors(cudaMemcpy(output_cufft, output_d, N * sizeof(double2), 
+    checkCudaErrors(cudaMemcpy(output_cufft, output_d, N * bs * sizeof(double2), 
                    cudaMemcpyDeviceToHost));
 
     checkCudaErrors(cufftDestroy(plan));

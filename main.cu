@@ -48,7 +48,7 @@ void test_turbofft(DataType* input_d, DataType* output_d, DataType* output_turbo
     
     printf("turboFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
     
-    checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)output_d, N * sizeof(DataType), cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)output_d, N * bs * sizeof(DataType), cudaMemcpyDeviceToHost));
 }
 
 
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]){
     test_turbofft(input_d, output_d, output_turbofft, params[logN], bs, 1);
     profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
     
-    utils::compareData<DataType>(output_turbofft, output_cufft, N, 1e-5);
+    utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
 
     // Profiling
     test_turbofft(input_d, output_d, output_turbofft, params[logN], bs, ntest);

@@ -19,7 +19,7 @@ namespace utils{
     res = cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs);
     printf("Intiliaze output_d status %d\n", res);
     if(res) exit(-1);
-    for(int i = 0; i < N * bs; ++i){
+    for(long long int i = 0; i < N * bs; ++i){
         input[i].x = (double)(random() % 100) / (double)100;
         input[i].y = (double)(random() % 100) / (double)100;
     }

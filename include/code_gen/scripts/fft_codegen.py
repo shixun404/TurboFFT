@@ -328,7 +328,7 @@ if __name__ == '__main__':
             params.append(row)
     
     # global_tensor_shape = [256, 256, 128, 1]
-    for row in params[5:6]:
+    for row in params:
         global_tensor_shape = [2 ** i for i in row[2:(2 + row[1])]]
         threadblock_bs = row[5:(5 + row[1])]
         WorkerFFTSizes = row[8:(8 + row[1])]
