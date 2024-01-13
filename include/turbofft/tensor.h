@@ -5,8 +5,9 @@ namespace turbofft{
     > class Tensor{
         private:
             DataType* data;
-            size_t NumDimensions = sizeof...(Dimensions);
-            size_t dimensions[sizeof...(Dimensions)]={Dimensions...};
+            // size_t NumDimensions = sizeof...(Dimensions);
+            size_t NumDimensions = 1;
+            size_t dimensions[1]={1};
             // size_t stride[sizeof...(Dimensions)]={Dimensions...};
         public:
             Tensor(DataType* data){
@@ -14,11 +15,13 @@ namespace turbofft{
             }
 
             size_t CalculateTotalElements(){
-                return (Dimensions * ... * 1);
+                return 1;
+                // return (Dimensions * ... * 1);
             }
 
             size_t CalculateTotalSize(){
-                return (Dimensions * ... * 1) * sizeof(DataType);
+                return 1;
+                // return (Dimensions * ... * 1) * sizeof(DataType);
             }
     };
     // template<typename DataType>

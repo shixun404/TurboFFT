@@ -27,7 +27,7 @@
 #include "code_gen/generated/fft_radix_2_logN_11_upload_0.cuh"
 #include "code_gen/generated/fft_radix_2_logN_12_upload_0.cuh"
 
-void (*turboFFTArr[13][3])(double2 *, double2 *, int) = {
+void (*turboFFTArr[13][3])(double2 *, double2 *, double2 *, int) = {
     {NULL, NULL, NULL},
     {fft_radix_2_logN_1_dim_0, NULL, NULL},
     {fft_radix_2_logN_2_dim_0, NULL, NULL},

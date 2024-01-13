@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
 project(turbofft LANGUAGES CXX CUDA)
 
 # Set CUDA architecture
-set(CMAKE_CUDA_ARCHITECTURES 80)
+set(CMAKE_CUDA_ARCHITECTURES 75)
+
+# Add -O3 optimization flag for CUDA
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3")
 
 # Find CUDA package
 find_package(CUDA REQUIRED)
@@ -10,7 +13,7 @@ find_package(CUDA REQUIRED)
 # Include the TurboFFT directory
 include_directories("include/")
 
-include_directories("/global/homes/s/swu264/HPCDeepNeuralNetworks/cuda-samples/Common/")
+include_directories("~/cuda-samples/Common/")
 
 # Specify the executable and its source files
 add_executable(turbofft main.cu)

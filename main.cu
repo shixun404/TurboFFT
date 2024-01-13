@@ -9,14 +9,15 @@
 
 
 void test_turbofft(DataType* input_d, DataType* output_d, DataType* output_turbofft, 
-                    std::vector<long long int> param, long long int bs, int ntest){
+                    DataType* twiddle_d, std::vector<long long int> param,
+                    long long int bs, int ntest){
     long long int N = (1 << param[0]), threadblock_bs, Ni, WorkerFFTSize;
     long long int logN = param[0];
     long long int shared_size[3], griddims[3], blockdims[3]; 
     int kernel_launch_times = param[1];
     float gflops, elapsed_time;
     cudaEvent_t fft_begin, fft_end;
-    printf("adasdas\n");
+    // printf("adasdas\n");
     for(int i = 0; i < kernel_launch_times; ++i){
         threadblock_bs = param[5 + i];
         Ni = (1 << param[2 + i]); 
@@ -31,9 +32,11 @@ void test_turbofft(DataType* input_d, DataType* output_d, DataType* output_turbo
     cudaEventCreate(&fft_end);
 
     cudaEventRecord(fft_begin);
+    #pragma unroll
     for (int j = 0; j < ntest; ++j){
+        #pragma unroll
         for(int i = 0; i < kernel_launch_times; ++i){
-            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(input_d, output_d, bs);
+            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(input_d, output_d, twiddle_d, bs);
         }
         cudaDeviceSynchronize();
     }
@@ -53,7 +56,7 @@ void test_turbofft(DataType* input_d, DataType* output_d, DataType* output_turbo
 
 
 int main(int argc, char *argv[]){
-    if (argc != 3) {
+    if (argc != 4) {
         std::cerr << "Usage: program_name N bs" << std::endl;
         return 1;
     }
@@ -61,12 +64,12 @@ int main(int argc, char *argv[]){
     long long logN = std::atoi(argv[1]); // Convert first argument to integer
     long long N = 1 << logN; // Convert first argument to integer
     long long bs = std::atoi(argv[2]); // Convert second argument to integer
-    
+    bool if_profile = std::atoi(argv[3]);
     DataType* input, *output_turbofft, *output_cufft;
-    DataType* input_d, *output_d;
+    DataType* input_d, *output_d, *twiddle_d;
     int ntest = 10;
 
-    std::vector<std::vector<long long int>> params;
+    std::vector<std::vector<long long int> > params;
     
     std::ifstream file("../include/param/param.csv");
     if (file.is_open()) {
@@ -79,16 +82,19 @@ int main(int argc, char *argv[]){
 
 
     // Verification
-    utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, N, bs + 3);
-    test_turbofft(input_d, output_d, output_turbofft, params[logN], bs, 1);
+    utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
     profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
+    test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
+
     
+
     utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
 
     // Profiling
-    test_turbofft(input_d, output_d, output_turbofft, params[logN], bs, ntest);
-    profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-    
+    if(if_profile){
+        profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+        test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
+    }
     cudaFree(input_d);
     cudaFree(output_d);
     return 0;
