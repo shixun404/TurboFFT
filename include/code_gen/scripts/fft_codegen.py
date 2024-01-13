@@ -185,7 +185,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                     globalAccess_code += f'''
     // angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
     // angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
-    angle = twiddle[{N - 1} + global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize})];
+    // angle = twiddle[{N - 1} + global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize})];
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''
