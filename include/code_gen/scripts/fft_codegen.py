@@ -43,6 +43,7 @@ class TurboFFT:
             f"{self.rPtr_2}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
             "tmp": (self.data_type, None),
             "angle": (self.data_type, None),
+            "delta_angle": (self.data_type, None),
         }
 
 
@@ -182,6 +183,16 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             else:
                 if if_twiddle:
                     N = th.prod(global_tensor_shape[:(dim + 1)])
+                    if i == 0:
+                        globalAccess_code += f'''
+    delta_angle = twiddle[{N - 1} + global_j * ({global_tensor_shape[i] // WorkerFFTSize})];
+    angle = twiddle[{N - 1} + global_j * global_k];
+    '''                    
+                    else:
+                        globalAccess_code += f'''
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    '''                             
                     globalAccess_code += f'''
     // angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
     // angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
@@ -267,13 +278,27 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         for output_id in range(WorkerFFTSize): 
             print(output_id, dict_output[output_id])
             if dim != len(threadblock_tensor_shape) - 1:
-                reg2shared_code += f'''
-    // angle.x = cos(M_PI * {-2 * output_id / N} * j);
-    // angle.y = sin(M_PI * {-2 * output_id / N} * j);
-    // angle = twiddle[{N - 1} + {output_id} * j];
+                if output_id == 0:
+                    reg2shared_code += f'''
+    delta_angle = twiddle[{N - 1} + j];
+    angle.x = 1;
+    angle.y = 0;
+    '''    
+                else:
+                    reg2shared_code += f'''
+    tmp = angle;
+    delta_angle = twiddle[{N - 1} + j];
+    turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
-    '''
+    '''             
+    #             reg2shared_code += f'''
+    # // angle.x = cos(M_PI * {-2 * output_id / N} * j);
+    # // angle.y = sin(M_PI * {-2 * output_id / N} * j);
+    
+    # tmp = {self.rPtr}[{dict_output[output_id]}];
+    # turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
+    # '''
             if dim == 0:
                 reg2shared_code += f'''
     {self.rPtr_2}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];

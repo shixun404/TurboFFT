@@ -56,7 +56,7 @@ void test_turbofft(DataType* input_d, DataType* output_d, DataType* output_turbo
 
 
 int main(int argc, char *argv[]){
-    if (argc != 4) {
+    if (argc < 3) {
         std::cerr << "Usage: program_name N bs" << std::endl;
         return 1;
     }
@@ -64,36 +64,45 @@ int main(int argc, char *argv[]){
     long long logN = std::atoi(argv[1]); // Convert first argument to integer
     long long N = 1 << logN; // Convert first argument to integer
     long long bs = std::atoi(argv[2]); // Convert second argument to integer
-    bool if_profile = std::atoi(argv[3]);
+    bool if_profile = 1;
+    bool if_verify = 0;
+    if (argc >= 4) if_profile = std::atoi(argv[3]);
+    if (argc >= 5) if_verify = std::atoi(argv[4]);
+    
     DataType* input, *output_turbofft, *output_cufft;
     DataType* input_d, *output_d, *twiddle_d;
     int ntest = 10;
 
     std::vector<std::vector<long long int>> params;
     
-    std::ifstream file("../include/param/param.csv");
-    if (file.is_open()) {
-        std::cout << "File opened successfully." << std::endl;
-        // Perform file operations here
-    } else {
-        std::cout << "Failed to open file." << std::endl;
-    }    
-    params = utils::load_parameters(file);
+    // std::ifstream file("../include/param/param.csv");
+    // if (file.is_open()) {
+    //     std::cout << "File opened successfully." << std::endl;
+    //     // Perform file operations here
+    // } else {
+    //     std::cout << "Failed to open file." << std::endl;
+    // }    
+    // params = utils::load_parameters(file);
+    std::string param_file_path = "../include/param/param.csv";
+    params = utils::load_parameters(param_file_path);
+
+    utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
 
 
     // Verification
-    utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
-    profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
-    test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
+    if(if_verify){
+        profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
+        test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
+        utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
+    }
 
-    
-
-    // utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
-
+    test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
     // Profiling
     if(if_profile){
+        
         profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
         test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
+        // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
     }
     cudaFree(input_d);
     cudaFree(output_d);
