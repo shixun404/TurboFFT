@@ -9,11 +9,13 @@ void compareData(DataType* res, DataType *res_ref, long long int N,
     for(int i = 0; i < N; ++i){
         rel_error = abs((res[i].x - res_ref[i].x) / res_ref[i].x);
         if(rel_error > error_bound){
+        // if(true){
             printf("Error detected: res[%d].x=%f, res_ref[%d].x=%f, rel_error=%f\n", 
             i, res[i].x, i, res_ref[i].x, rel_error);
         }
         rel_error = abs((res[i].y - res_ref[i].y) / res_ref[i].y);
         if(rel_error > error_bound){
+        // if(true){
             printf("Error detected: res[%d].y=%f, res_ref[%d].y=%f, rel_error=%f\n", 
             i, res[i].y, i, res_ref[i].y, rel_error);
         }

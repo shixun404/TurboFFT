@@ -15,11 +15,11 @@ class TurboFFT:
         self.threadblock_bs_dim = threadblock_bs_dim
         self.global_tensor_shape = global_tensor_shape
         self.radix = radix
-        self.state_vec = th.zeros(32, 5)
+        self.state_vec = th.zeros(64, 6)
         self.data = th.rand(self.WorkerFFTSizes, dtype=th.cfloat)
         self.output = th.zeros(self.WorkerFFTSizes, dtype=th.cfloat)
-        for i in range(32):
-            for j in range(5):
+        for i in range(64):
+            for j in range(6):
                 self.state_vec[i, j] = int((i // (2 ** j))) % 2
 
         self.threadblock_tensor_shape = []
@@ -102,7 +102,7 @@ class TurboFFT:
         N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
         head = f'''extern __shared__ {self.data_type} shared[];
 __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}''' \
-        + f'''({self.data_type}* inputs, {self.data_type}* outputs, int BS)''' + ''' {
+        + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, int BS)''' + ''' {
     '''
         for key in self.local_variable.keys():
             head += f'''{self.local_variable[key][0]} {key};
@@ -183,8 +183,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                 if if_twiddle:
                     N = th.prod(global_tensor_shape[:(dim + 1)])
                     globalAccess_code += f'''
-    angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
-    angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
+    // angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
+    // angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
+    angle = twiddle[{N - 1} + global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize})];
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''
@@ -267,8 +268,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             print(output_id, dict_output[output_id])
             if dim != len(threadblock_tensor_shape) - 1:
                 reg2shared_code += f'''
-    angle.x = cos(M_PI * {-2 * output_id / N} * j);
-    angle.y = sin(M_PI * {-2 * output_id / N} * j);
+    // angle.x = cos(M_PI * {-2 * output_id / N} * j);
+    // angle.y = sin(M_PI * {-2 * output_id / N} * j);
+    // angle = twiddle[{N - 1} + {output_id} * j];
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''
@@ -317,6 +319,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     tmp = {self.rPtr}[{id_j1}];
     turboFFT_ZADD({self.rPtr}[{id_j1}], tmp, {self.rPtr}[{id_j2}]);
     turboFFT_ZSUB({self.rPtr}[{id_j2}], tmp, {self.rPtr}[{id_j2}]);
+    tmp = {self.rPtr}[{id_j2}];
     '''
                 if np.allclose(0, cos(tmp_angle), rel_bounds, abs_bounds):
                     if np.allclose(1, sin(tmp_angle), rel_bounds, abs_bounds):
@@ -334,14 +337,13 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                         pass
                     else:
                         fft_reg_code += f'''
-    {self.rPtr}[{id_j2}].x = -tmp.x;
+    {self.rPtr}[{id_j2}].x = -tmp.x;    
     {self.rPtr}[{id_j2}].y = -tmp.y;
     '''
                 else:
                     fft_reg_code += f'''
     angle.x = {cos(tmp_angle)};
     angle.y = {sin(tmp_angle)};
-    tmp = {self.rPtr}[{id_j2}];
     turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
     '''
 
