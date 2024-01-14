@@ -20,3 +20,7 @@ TurboFFT is ideal for applications requiring high-speed FFT computations on NVID
 
 ## Contribution
 We welcome contributions from the community. Please see our contribution guidelines for more details.
+
+## Some Usefule Command:
+
+- dcgmi profile --pause

@@ -16,8 +16,6 @@ class TurboFFT:
         self.global_tensor_shape = global_tensor_shape
         self.radix = radix
         self.state_vec = th.zeros(64, 6)
-        self.data = th.rand(self.WorkerFFTSizes, dtype=th.cfloat)
-        self.output = th.zeros(self.WorkerFFTSizes, dtype=th.cfloat)
         for i in range(64):
             for j in range(6):
                 self.state_vec[i, j] = int((i // (2 ** j))) % 2
@@ -34,6 +32,8 @@ class TurboFFT:
         self.local_variable = {
             "j" : ("int", "0"),
             "k" : ("int", "0"),
+            "global_j" : ("int", "0"),
+            "global_k" : ("int", "0"),
             "bx": ("int", "blockIdx.x"),
             "tx": ("int", "threadIdx.x"),
             "offset": ("int", "0"),
@@ -91,7 +91,6 @@ class TurboFFT:
             if dim == 0:
                 blockorder = self.list_reverse(blockorder, 0, -1)
                 global_tensor_shape = self.list_reverse(global_tensor_shape, 0, -1)
-
             fft_code += self.globalAccess(blockorder[dim], global_tensor_shape, 
                         blockorder[threadblock_bs_dim], threadblock_bs, WorkerFFTSize,
                             blockorder, if_output=True, dict_output=dict_output, if_twiddle=(dim!=0))
@@ -167,13 +166,23 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     {self.gPtr} += tx % {threadblock_bs} * {stride};
     '''
             stride *= global_tensor_shape[i]
+    #     if len(blockorder) == 2:
+    #         globalAccess_code += f'''
+    # {self.gPtr} += tx % {threadblock_bs} * {stride};
+    # {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1] * threadblock_bs)});
+    # '''
+    #     else:
+    #         globalAccess_code += f'''
+    # {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
+    # '''
+        globalAccess_code += f'''
+    {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
+    '''
         if if_twiddle:
             globalAccess_code += f'''
     global_k += tx / {threadblock_bs};
     '''
-        globalAccess_code += f'''
-    {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
-    '''
+        
         
         for i in range(WorkerFFTSize):
             if not if_output:
@@ -185,7 +194,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                     N = th.prod(global_tensor_shape[:(dim + 1)])
                     if i == 0:
                         globalAccess_code += f'''
-    delta_angle = twiddle[{N - 1} + global_j * ({global_tensor_shape[i] // WorkerFFTSize})];
+    delta_angle = twiddle[{N - 1} + global_j * ({global_tensor_shape[dim] // WorkerFFTSize})];
     angle = twiddle[{N - 1} + global_j * global_k];
     '''                    
                     else:
@@ -194,11 +203,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     turboFFT_ZMUL(angle, tmp, delta_angle);
     '''                             
                     globalAccess_code += f'''
-    // angle.x = cos(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
-    // angle.y = sin(-2 * M_PI * global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize}) / {N});
-    // angle = twiddle[{N - 1} + global_j * (global_k + {i * global_tensor_shape[i] // WorkerFFTSize})];
-    tmp = {self.rPtr}[{dict_output[output_id]}];
-    turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
+    tmp = {self.rPtr}[{dict_output[i]}];
+    turboFFT_ZMUL({self.rPtr}[{dict_output[i]}], tmp, angle);
     '''
                 globalAccess_code += f'''
     *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
@@ -284,25 +290,27 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     angle.x = 1;
     angle.y = 0;
     '''    
+    #             elif:
+    #                 output_id % (WorkerFFTSize // 2) == 0:
+    #                 reg2shared_code += f'''
+    
+    # '''        
                 else:
                     reg2shared_code += f'''
     tmp = angle;
-    delta_angle = twiddle[{N - 1} + j];
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''             
-    #             reg2shared_code += f'''
-    # // angle.x = cos(M_PI * {-2 * output_id / N} * j);
-    # // angle.y = sin(M_PI * {-2 * output_id / N} * j);
-    
-    # tmp = {self.rPtr}[{dict_output[output_id]}];
-    # turboFFT_ZMUL({self.rPtr}[{dict_output[output_id]}], tmp, angle);
-    # '''
+
             if dim == 0:
                 reg2shared_code += f'''
     {self.rPtr_2}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
     '''
+        #         reg2shared_code += f'''
+        # k = (({output_id} + (threadIdx.x / {threadblock_bs}) % {max(1, int(8 / threadblock_bs))}) % {WorkerFFTSize});
+        # {self.shPtr}[offset + {access_stride} * k] = {self.rPtr}[{dict_output[output_id]}];;
+        # '''                
             else:
                 reg2shared_code += f'''
     {self.shPtr}[offset + {access_stride * output_id}] = {self.rPtr}[{dict_output[output_id]}];
@@ -310,7 +318,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         if dim == 0:
             for output_id in range(WorkerFFTSize):
                 reg2shared_code += f'''
-        k = (({output_id} + (threadIdx.x / {threadblock_bs}) % {WorkerFFTSize}) % {WorkerFFTSize});
+        k = (({output_id} + (threadIdx.x / {threadblock_bs}) % {max(1, int(8 / threadblock_bs))}) % {WorkerFFTSize});
         {self.shPtr}[offset + {access_stride} * k] = {self.rPtr_2}[k];
         '''
         return reg2shared_code
@@ -371,12 +379,6 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     angle.y = {sin(tmp_angle)};
     turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
     '''
-
-                tmp = self.data[id_j1].item()
-                self.data[id_j1] = tmp + self.data[id_j2]
-                self.data[id_j2] = tmp - self.data[id_j2]
-                angle = cos(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs))) + sin(-2 * pi * id_k * 1 / (2 ** (i + 1 - logbs))) * 1.j
-                self.data[id_j2] = self.data[id_j2] * angle
         
         return fft_reg_code
 

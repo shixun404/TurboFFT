@@ -18,7 +18,7 @@ namespace utils{
     printf("Intiliaze input_d status %d\n", res);
     if(res) exit(-1);
     // checkCudaErrors(cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs));
-    res = cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs);
+    res = cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs * 2);
     printf("Intiliaze output_d status %d\n", res);
     if(res) exit(-1);
     for(long long int i = 0; i < N * bs; ++i){
