@@ -45,8 +45,20 @@
 #include "code_gen/generated/fft_radix_2_logN_21_upload_0.cuh"
 #include "code_gen/generated/fft_radix_2_logN_21_upload_1.cuh"
 #include "code_gen/generated/fft_radix_2_logN_21_upload_2.cuh"
+#include "code_gen/generated/fft_radix_2_logN_22_upload_0.cuh"
+#include "code_gen/generated/fft_radix_2_logN_22_upload_1.cuh"
+// #include "code_gen/generated/fft_radix_2_logN_22_upload_2.cuh"
+#include "code_gen/generated/fft_radix_2_logN_23_upload_0.cuh"
+#include "code_gen/generated/fft_radix_2_logN_23_upload_1.cuh"
+#include "code_gen/generated/fft_radix_2_logN_23_upload_2.cuh"
+#include "code_gen/generated/fft_radix_2_logN_24_upload_0.cuh"
+#include "code_gen/generated/fft_radix_2_logN_24_upload_1.cuh"
+#include "code_gen/generated/fft_radix_2_logN_24_upload_2.cuh"
+#include "code_gen/generated/fft_radix_2_logN_25_upload_0.cuh"
+#include "code_gen/generated/fft_radix_2_logN_25_upload_1.cuh"
+#include "code_gen/generated/fft_radix_2_logN_25_upload_2.cuh"
 
-void (*turboFFTArr[22][3])(double2 *, double2 *, double2 *, int) = {
+void (*turboFFTArr[26][3])(double2 *, double2 *, double2 *, int) = {
     {NULL, NULL, NULL},
     {fft_radix_2_logN_1_dim_0, NULL, NULL},
     {fft_radix_2_logN_2_dim_0, NULL, NULL},
@@ -69,4 +81,8 @@ void (*turboFFTArr[22][3])(double2 *, double2 *, double2 *, int) = {
     {fft_radix_2_logN_19_dim_0, fft_radix_2_logN_19_dim_1, NULL},
     {fft_radix_2_logN_20_dim_0, fft_radix_2_logN_20_dim_1, NULL},
     {fft_radix_2_logN_21_dim_0, fft_radix_2_logN_21_dim_1, fft_radix_2_logN_21_dim_2},
+    {fft_radix_2_logN_22_dim_0, fft_radix_2_logN_22_dim_1, fft_radix_2_logN_22_dim_1},
+    {fft_radix_2_logN_23_dim_0, fft_radix_2_logN_23_dim_1, fft_radix_2_logN_23_dim_2},
+    {fft_radix_2_logN_24_dim_0, fft_radix_2_logN_24_dim_1, fft_radix_2_logN_24_dim_2},
+    {fft_radix_2_logN_25_dim_0, fft_radix_2_logN_25_dim_1, fft_radix_2_logN_25_dim_2}
 };
