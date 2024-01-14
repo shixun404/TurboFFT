@@ -104,9 +104,9 @@ int main(int argc, char *argv[]){
     // Profiling
     if(if_profile){
         // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
-        
+        test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
         profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-        test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
+
         
         // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
     }
