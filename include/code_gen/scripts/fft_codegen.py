@@ -1,6 +1,7 @@
 import torch as th
 from math import *
 import numpy as np
+from main_codegen import main_codegen
 class TurboFFT:
     def __init__(self, global_tensor_shape=[256, 1], radix=2, WorkerFFTSizes = [8],
                         threadblock_bs=[1], threadblock_bs_dim=[0], data_type='double2'):
@@ -463,7 +464,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
 
 if __name__ == '__main__':
     params = []
-    datatype = 'float2'
+    # datatype = 'float2'
+    datatype = 'double2'
     with open(f"../../param/param_A100_{datatype}.csv", 'r') as file:
         for line in file:
             # Splitting each line by comma
@@ -490,3 +492,7 @@ if __name__ == '__main__':
                         threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[row[1] - 1], data_type=datatype)
         fft.codegen()
         fft.save_generated_code()
+        main_code = main_codegen(datatype)
+        file_name = "../../../main.cu"
+        with open(file_name, 'w') as f:
+            f.write(main_code)

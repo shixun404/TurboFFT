@@ -1,9 +1,12 @@
+#include "include/turbofft.h"
+// #include "include/code_gen/generated/fft_radix_2_logN_8_upload_0.cuh"
 
-    #include "include/turbofft_double2.h"
+// #define DataType nv_bfloat162
+// #define DataType double2
+#define DataType float2
+// #define DataType half2
 
-    // #define DataType double2
-    #define DataType double2
-    
+
 
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, std::vector<long long int> param, 
@@ -80,9 +83,7 @@ int main(int argc, char *argv[]){
     int ntest = 10;
 
     std::vector<std::vector<long long int>> params;
-    
-    std::string param_file_path = "../include/param/param_A100_double2.csv";
-    
+    std::string param_file_path = "../include/param/param_A100_float2.csv";
     params = utils::load_parameters(param_file_path);
 
 
@@ -138,5 +139,3 @@ int main(int argc, char *argv[]){
 //                                          input_d + N * (bs + 1), output_d + N * (bs + 2),   N, bs, ntest);
 // profiler::cufft::test_cufft_ft<DataType>(input_d, output_d, output_cufft, input_d + N * (bs + 2),
 //                                          input_d + N * (bs + 1), output_d + N * (bs + 2),   N, bs, ntest);
-
-    

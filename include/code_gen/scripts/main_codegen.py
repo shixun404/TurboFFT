@@ -1,9 +1,12 @@
-
-    #include "include/turbofft_double2.h"
+def main_codegen(data_type):
+    main_code = f'''
+    #include "include/turbofft_{data_type}.h"
 
     // #define DataType double2
-    #define DataType double2
-    
+    #define DataType {data_type}
+    '''
+
+    main_code += '''
 
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, std::vector<long long int> param, 
@@ -16,7 +19,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     int kernel_launch_times = param[1];
     float gflops, elapsed_time, mem_bandwidth;
     cudaEvent_t fft_begin, fft_end;
-    // printf("adasdas\n");
+    // printf("adasdas\\n");
     for(int i = 0; i < kernel_launch_times; ++i){
         // threadblock_bs = min((kernel_launch_times < 2 && bs < threadblock_bs) ? bs : param[5 + i], param[5 + i]);
         threadblock_bs = param[5 + i];
@@ -25,7 +28,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
         griddims[i] = (N * bs) / (Ni * threadblock_bs);
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
-        // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\n", i, griddims[i], blockdims[i], shared_size[i]);
+        // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\\n", i, griddims[i], blockdims[i], shared_size[i]);
         cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]);
     }
     
@@ -50,8 +53,8 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     elapsed_time = elapsed_time / ntest;
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
     mem_bandwidth = (float)(N * bs * 8 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
-    // printf("turboFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
-    printf("turboFFT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
+    // printf("turboFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\\n", elapsed_time, gflops);
+    printf("turboFFT, %d, %d, %8.3f, %8.3f, %8.3f\\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
     
     checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)outputs[kernel_launch_times - 1], N * bs * sizeof(DataType), cudaMemcpyDeviceToHost));
 }
@@ -80,9 +83,11 @@ int main(int argc, char *argv[]){
     int ntest = 10;
 
     std::vector<std::vector<long long int>> params;
-    
-    std::string param_file_path = "../include/param/param_A100_double2.csv";
-    
+    '''
+    main_code += f'''
+    std::string param_file_path = "../include/param/param_A100_{data_type}.csv";
+    '''
+    main_code += '''
     params = utils::load_parameters(param_file_path);
 
 
@@ -111,7 +116,7 @@ int main(int argc, char *argv[]){
     }
 
     if(if_bench){
-        printf("asdadas\n");
+        printf("asdadas\\n");
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, 1 << 25, 16 + 3);
         N = 1;
         for(logN = 1; logN <= 25; ++logN){
@@ -139,4 +144,11 @@ int main(int argc, char *argv[]){
 // profiler::cufft::test_cufft_ft<DataType>(input_d, output_d, output_cufft, input_d + N * (bs + 2),
 //                                          input_d + N * (bs + 1), output_d + N * (bs + 2),   N, bs, ntest);
 
-    
+    '''
+    return main_code
+
+if __name__ == '__main__':
+    main_code = main_codegen('float2')
+    file_name = "../../../main.cu"
+    with open(file_name, 'w') as f:
+        f.write(main_code)
