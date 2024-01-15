@@ -446,17 +446,25 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     {self.rPtr}[{id_j2}].y = -tmp.y;
     '''
                 else:
-                    fft_reg_code += f'''
-    angle.x = {cos(tmp_angle)};
-    angle.y = {sin(tmp_angle)};
-    turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
-    '''
+                    if self.data_type == 'double2':
+                        fft_reg_code += f'''
+        angle.x = {cos(tmp_angle)};
+        angle.y = {sin(tmp_angle)};
+        turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
+        '''
+                    else:
+                        fft_reg_code += f'''
+        angle.x = {cos(tmp_angle)}f;
+        angle.y = {sin(tmp_angle)}f;
+        turboFFT_ZMUL({self.rPtr}[{id_j2}], tmp, angle);
+        '''             
         
         return fft_reg_code
 
 if __name__ == '__main__':
     params = []
-    with open("../../param/param.csv", 'r') as file:
+    datatype = 'float2'
+    with open(f"../../param/param_A100_{datatype}.csv", 'r') as file:
         for line in file:
             # Splitting each line by comma
             split_elements = line.strip().split(',')
@@ -479,6 +487,6 @@ if __name__ == '__main__':
         # print(threadblock_bs)
         # print(threadblock_bs_dim)
         fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes,
-                        threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[row[1] - 1])
+                        threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[row[1] - 1], data_type=datatype)
         fft.codegen()
         fft.save_generated_code()

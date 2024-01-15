@@ -2,8 +2,8 @@
 // #include "include/code_gen/generated/fft_radix_2_logN_8_upload_0.cuh"
 
 // #define DataType nv_bfloat162
-#define DataType double2
-// #define DataType float2
+// #define DataType double2
+#define DataType float2
 // #define DataType half2
 
 
@@ -52,7 +52,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     
     elapsed_time = elapsed_time / ntest;
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
-    mem_bandwidth = (float)(N * bs * 16 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
+    mem_bandwidth = (float)(N * bs * 8 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
     // printf("turboFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
     printf("turboFFT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
     
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]){
     int ntest = 10;
 
     std::vector<std::vector<long long int>> params;
-    std::string param_file_path = "../include/param/param.csv";
+    std::string param_file_path = "../include/param/param_A100_float2.csv";
     params = utils::load_parameters(param_file_path);
 
 
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]){
             test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
             
-            utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
+            utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-4);
         }
 
         // Profiling

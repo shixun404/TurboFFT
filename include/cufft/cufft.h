@@ -17,10 +17,10 @@ void test_cufft<float2>(float2* input_d, float2* output_d,
     float gflops, elapsed_time, mem_bandwidth;
     cudaEvent_t fft_begin, fft_end;
 
+
     checkCudaErrors(cufftCreate(&plan));
 
     checkCudaErrors(cufftPlan1d(&plan, N, CUFFT_C2C, bs));
-
 
     cudaEventCreate(&fft_begin);
     cudaEventCreate(&fft_end);
@@ -28,8 +28,9 @@ void test_cufft<float2>(float2* input_d, float2* output_d,
     cudaEventRecord(fft_begin);
     for (int i = 0; i < ntest; ++i){
         checkCudaErrors(cufftExecC2C(plan, reinterpret_cast<cufftComplex*>(input_d), 
-                     reinterpret_cast<cufftComplex*>(output_d), 
-                     CUFFT_FORWARD));
+                        reinterpret_cast<cufftComplex*>(output_d), 
+                        CUFFT_FORWARD));
+        cudaDeviceSynchronize();
     }
     cudaEventRecord(fft_end);
     cudaEventSynchronize(fft_begin);
@@ -40,10 +41,10 @@ void test_cufft<float2>(float2* input_d, float2* output_d,
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
     
     // printf("cuFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
-    mem_bandwidth = (float)(N * bs * 16 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
-    printf("cuFFT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops);
+    mem_bandwidth = (float)(N * bs * 8 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
+    printf("cuFFT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
 
-    checkCudaErrors(cudaMemcpy(output_cufft, output_d, N * sizeof(float2), 
+    checkCudaErrors(cudaMemcpy(output_cufft, output_d, N * bs * sizeof(float2), 
                    cudaMemcpyDeviceToHost));
 
     checkCudaErrors(cufftDestroy(plan));
