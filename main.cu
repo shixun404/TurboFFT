@@ -17,7 +17,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     DataType* inputs[3] = {input_d, output_d, output_d + N * bs};
     DataType* outputs[3] = {output_d, output_d + N * bs, output_d};
     int kernel_launch_times = param[1];
-    float gflops, elapsed_time;
+    float gflops, elapsed_time, mem_bandwidth;
     cudaEvent_t fft_begin, fft_end;
     // printf("adasdas\n");
     for(int i = 0; i < kernel_launch_times; ++i){
@@ -28,7 +28,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
         griddims[i] = (N * bs) / (Ni * threadblock_bs);
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
-        printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\n", i, griddims[i], blockdims[i], shared_size[i]);
+        // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\n", i, griddims[i], blockdims[i], shared_size[i]);
         cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]);
     }
     
@@ -52,8 +52,9 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     
     elapsed_time = elapsed_time / ntest;
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
-    
-    printf("turboFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
+    mem_bandwidth = (float)(N * bs * 16 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
+    // printf("turboFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
+    printf("turboFFT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
     
     checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)outputs[kernel_launch_times - 1], N * bs * sizeof(DataType), cudaMemcpyDeviceToHost));
 }
@@ -64,55 +65,72 @@ int main(int argc, char *argv[]){
         std::cerr << "Usage: program_name N bs" << std::endl;
         return 1;
     }
-
-    long long logN = std::atoi(argv[1]); // Convert first argument to integer
+    
+    long long logN = std::atol(argv[1]); // Convert first argument to integer
     long long N = 1 << logN; // Convert first argument to integer
-    long long bs = std::atoi(argv[2]); // Convert second argument to integer
+    long long bs = std::atol(argv[2]); // Convert second argument to integer
     bool if_profile = 1;
     bool if_verify = 0;
-    if (argc >= 4) if_profile = std::atoi(argv[3]);
-    if (argc >= 5) if_verify = std::atoi(argv[4]);
+    bool if_bench = 0;
     
+    if (argc >= 4) if_profile = std::atol(argv[3]);
+    if (argc >= 5) if_verify  = std::atol(argv[4]);
+    if (argc >= 6) if_bench = std::atol(argv[5]);
+
     DataType* input, *output_turbofft, *output_cufft;
     DataType* input_d, *output_d, *twiddle_d;
     int ntest = 10;
 
     std::vector<std::vector<long long int>> params;
-    
-    // std::ifstream file("../include/param/param.csv");
-    // if (file.is_open()) {
-    //     std::cout << "File opened successfully." << std::endl;
-    //     // Perform file operations here
-    // } else {
-    //     std::cout << "Failed to open file." << std::endl;
-    // }    
-    // params = utils::load_parameters(file);
     std::string param_file_path = "../include/param/param.csv";
     params = utils::load_parameters(param_file_path);
 
-    utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
 
+    
+    if(!if_bench){
+        // Verification
+        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
 
-    // Verification
-    if(if_verify){
-        test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
-        profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
-        
-        utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
+        if(if_verify){
+            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
+            profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
+            
+            utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-5);
+        }
+
+        // Profiling
+        if(if_profile){
+            // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
+            
+            profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
+
+            
+            // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
+        }
     }
 
-    // Profiling
-    if(if_profile){
-        // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
-        
-        profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-        test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
+    if(if_bench){
+        printf("asdadas\n");
+        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, 1 << 25, 16 + 3);
+        N = 1;
+        for(logN = 1; logN <= 25; ++logN){
+            N *= 2;
+            bs = 1;
+            for(int i = 0; i < 29 - logN; i += 1){
+                profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+                test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
+                bs *= 2;
+            }
+        }
 
-        
-        // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
     }
     cudaFree(input_d);
     cudaFree(output_d);
+    cudaFree(twiddle_d);
+    free(input);
+    free(output_cufft);
+    free(output_turbofft);
     return 0;
 }
 
