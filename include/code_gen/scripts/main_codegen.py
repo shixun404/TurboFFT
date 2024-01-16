@@ -1,8 +1,6 @@
 def main_codegen(data_type):
     main_code = f'''
     #include "include/turbofft_{data_type}.h"
-
-    // #define DataType double2
     #define DataType {data_type}
     '''
 
@@ -26,7 +24,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         Ni = (1 << param[2 + i]); 
         WorkerFFTSize = param[8 + i]; 
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
-        griddims[i] = (N * bs) / (Ni * threadblock_bs);
+        griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
         // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\\n", i, griddims[i], blockdims[i], shared_size[i]);
         cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]);
@@ -52,7 +50,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     
     elapsed_time = elapsed_time / ntest;
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
-    mem_bandwidth = (float)(N * bs * 8 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
+    mem_bandwidth = (float)(N * bs * sizeof(DataType) * 2) / (elapsed_time) * 1000.f / 1000000000.f;
     // printf("turboFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\\n", elapsed_time, gflops);
     printf("turboFFT, %d, %d, %8.3f, %8.3f, %8.3f\\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
     

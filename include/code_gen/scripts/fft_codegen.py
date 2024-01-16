@@ -4,7 +4,8 @@ import numpy as np
 from main_codegen import main_codegen
 class TurboFFT:
     def __init__(self, global_tensor_shape=[256, 1], radix=2, WorkerFFTSizes = [8],
-                        threadblock_bs=[1], threadblock_bs_dim=[0], data_type='double2'):
+                        threadblock_bs=[1], threadblock_bs_dim=[0], data_type='double2',
+                        if_special=False):
         self.fft_code = []
         self.data_type = data_type
         self.gPtr = "gPtr"
@@ -17,6 +18,7 @@ class TurboFFT:
         self.global_tensor_shape = global_tensor_shape
         self.radix = radix
         self.state_vec = th.zeros(64, 6)
+        self.if_special = if_special
         for i in range(64):
             for j in range(6):
                 self.state_vec[i, j] = int((i // (2 ** j))) % 2
@@ -55,11 +57,17 @@ class TurboFFT:
 
 
     def save_generated_code(self, ):
-        N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
-        for i in range(len(self.global_tensor_shape) - 1):
-            file_name = f"../generated/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
+        if not self.if_special:
+            N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
+            for i in range(len(self.global_tensor_shape) - 1):
+                file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
+                with open(file_name, 'w') as f:
+                    f.write(self.fft_code[i])
+        else:
+            N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
+            file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{0}.cuh"
             with open(file_name, 'w') as f:
-                f.write(self.fft_code[i])
+                f.write(self.fft_code[1])
 
     def codegen(self,):
 
@@ -100,7 +108,7 @@ class TurboFFT:
                 
                     fft_code += self.reg2shared(threadblock_bs, threadblock_tensor_shape, 
                                         WorkerFFTSize, threadblock_dim, dict_output)
-            if dim == 0:
+            if dim == 0 and not if_special:
                 blockorder = self.list_reverse(blockorder, 0, -1)
                 global_tensor_shape = self.list_reverse(global_tensor_shape, 0, -1)
             fft_code += self.globalAccess(blockorder[dim], global_tensor_shape, 
@@ -112,6 +120,9 @@ class TurboFFT:
 
     def head(self, dim):
         N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
+        if self.if_special:
+            N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
+            dim = 0
         head = f'''extern __shared__ {self.data_type} shared[];
 __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}''' \
         + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, int BS)''' + ''' {
@@ -171,9 +182,15 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     '''    
             if i == dim:
                 if not if_to_shared:
-                    globalAccess_code += f'''
-        {self.gPtr} += tx / {threadblock_bs} * {stride};
-        '''
+                    if threadblock_bs != 0 and len(global_tensor_shape) == 2:
+                        globalAccess_code += f'''
+    {self.gPtr} += tx % {int(global_tensor_shape[0] // WorkerFFTSize)} * {stride};
+    '''
+                    else:
+                        globalAccess_code += f'''
+    {self.gPtr} += tx / {threadblock_bs} * {stride};
+    '''
+
                     access_stride = global_tensor_shape[i] // WorkerFFTSize * stride
                 else:
                     # print(global_tensor_shape, i, global_tensor_shape[:i], stride)
@@ -184,10 +201,17 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         '''         
                     access_stride_data_dim = max(1, global_tensor_shape[dim] // (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs))
                     access_stride_data = (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) * stride
-            globalAccess_code += f'''
-    {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
-    bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
+            
+            if threadblock_bs != 0 and len(global_tensor_shape) == 2:
+                globalAccess_code += f'''
+    {self.gPtr} += (tx / {int(global_tensor_shape[0] // WorkerFFTSize)}) * {global_tensor_shape[0]};
+    {self.gPtr} += (bx) * {threadblock_bs * global_tensor_shape[0]};
     '''
+            else:
+                globalAccess_code += f'''
+        {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
+        bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
+        '''
             if i == threadblock_bs_dim:
                 if not if_to_shared:
                     globalAccess_code += f'''
@@ -201,10 +225,12 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                     access_stride_bs_dim = threadblock_bs if (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) >= 1 else global_tensor_shape[dim] // WorkerFFTSize 
                     access_stride_bs = stride if (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) >= 1 else ((WorkerFFTSize  * threadblock_bs) / global_tensor_shape[dim] * stride)
                     # print((WorkerFFTSize  * threadblock_bs) / global_tensor_shape[dim] * stride, stride, access_stride_bs)
-                    
-        globalAccess_code += f'''
-    {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
-    '''
+        if threadblock_bs != 0 and len(global_tensor_shape) == 2:
+            pass
+        else:       
+            globalAccess_code += f'''
+        {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
+        '''
         if if_twiddle:
             globalAccess_code += f'''
     global_k += tx / {threadblock_bs};
@@ -346,7 +372,10 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         tmp = 1
         stride = 1
         access_stride = 1
-        bs_tensor_shape = [threadblock_bs] + threadblock_tensor_shape
+        if threadblock_bs != 0 and len(global_tensor_shape) == 2:
+            bs_tensor_shape = threadblock_tensor_shape + [threadblock_bs]
+        else:
+            bs_tensor_shape = [threadblock_bs] + threadblock_tensor_shape
         for i in range(len(bs_tensor_shape)):
             stride *= bs_tensor_shape[i]
             if i == dim + 1:
@@ -479,17 +508,27 @@ if __name__ == '__main__':
         global_tensor_shape = [2 ** i for i in row[2:(2 + row[1])]]
         threadblock_bs = row[5:(5 + row[1])]
         WorkerFFTSizes = row[8:(8 + row[1])]
+        
+        
         threadblock_bs.reverse()
         global_tensor_shape.reverse()
         WorkerFFTSizes.reverse()
+        st = row[1]
+        if_special = False
+        if row[1] == 1 and threadblock_bs[-1] != 1:
+            
+            st = 2
+            if_special = True
+            global_tensor_shape.append(threadblock_bs[-1])
+            threadblock_bs.append(1)
+            WorkerFFTSizes.append(2)
         global_tensor_shape.append(1)
         threadblock_bs_dim = [[1], [1, 0], [2, 0, 0]]
-        # print(global_tensor_shape)
-        # print(WorkerFFTSizes)
-        # print(threadblock_bs)
-        # print(threadblock_bs_dim)
+        print(global_tensor_shape, WorkerFFTSizes, threadblock_bs, threadblock_bs_dim)
+        # assert 0
         fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes,
-                        threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[row[1] - 1], data_type=datatype)
+                    threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[st - 1], data_type=datatype, if_special=if_special)
+        
         fft.codegen()
         fft.save_generated_code()
         main_code = main_codegen(datatype)
