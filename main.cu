@@ -21,7 +21,8 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         Ni = (1 << param[2 + i]); 
         WorkerFFTSize = param[8 + i]; 
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
-        griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
+        if(threadblock_bs != 1 && i == 0)griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
+        else griddims[i] = (N * bs) / (Ni * threadblock_bs);
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
         // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\n", i, griddims[i], blockdims[i], shared_size[i]);
         cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]);
@@ -116,7 +117,7 @@ int main(int argc, char *argv[]){
             N *= 2;
             bs = 1;
             for(int i = 0; i < 29 - logN; i += 1){
-                profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+                // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
                 bs *= 2;
             }

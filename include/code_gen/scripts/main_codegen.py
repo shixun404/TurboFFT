@@ -24,7 +24,8 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         Ni = (1 << param[2 + i]); 
         WorkerFFTSize = param[8 + i]; 
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
-        griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
+        if(threadblock_bs != 1 && i == 0)griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
+        else griddims[i] = (N * bs) / (Ni * threadblock_bs);
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
         // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\\n", i, griddims[i], blockdims[i], shared_size[i]);
         cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]);

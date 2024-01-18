@@ -2,6 +2,7 @@ import torch as th
 from math import *
 import numpy as np
 from main_codegen import main_codegen
+import sys
 class TurboFFT:
     def __init__(self, global_tensor_shape=[256, 1], radix=2, WorkerFFTSizes = [8],
                         threadblock_bs=[1], threadblock_bs_dim=[0], data_type='double2',
@@ -12,6 +13,7 @@ class TurboFFT:
         self.rPtr = "rPtr"
         self.rPtr_2 = "rPtr_2"
         self.shPtr = "shPtr"
+        self.ft = 1
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
         self.threadblock_bs_dim = threadblock_bs_dim
@@ -48,8 +50,8 @@ class TurboFFT:
             "offset": ("int", "0"),
             self.gPtr: (f"{self.data_type}*", "inputs"),
             self.shPtr: (f"{self.data_type}*", "shared"),
-            f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
-            # f"{self.rPtr_2}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
+            f"{self.rPtr}[{self.WorkerFFTSizes[dim] + self.ft}]": (self.data_type, None),
+            f"{self.rPtr_2}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
             "tmp": (self.data_type, None),
             "angle": (self.data_type, None),
             "delta_angle": (self.data_type, None),
@@ -152,6 +154,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         T = int(global_tensor_shape[dim] / WorkerFFTSize)
         globalAccess_code = f'''bx = {self.local_variable["bx"][1]};
     tx = threadIdx.x;
+    tmp.x = 0;
+    tmp.y = 0;
     ''' 
         access_stride_bs_dim = 1
         access_stride_data_dim =  1
@@ -182,36 +186,24 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     '''    
             if i == dim:
                 if not if_to_shared:
-                    if threadblock_bs != 0 and len(global_tensor_shape) == 2:
-                        globalAccess_code += f'''
-    {self.gPtr} += tx % {int(global_tensor_shape[0] // WorkerFFTSize)} * {stride};
-    '''
-                    else:
-                        globalAccess_code += f'''
+                    
+                    globalAccess_code += f'''
     {self.gPtr} += tx / {threadblock_bs} * {stride};
     '''
 
                     access_stride = global_tensor_shape[i] // WorkerFFTSize * stride
                 else:
-                    # print(global_tensor_shape, i, global_tensor_shape[:i], stride)
-                    # assert 0
                     globalAccess_code += f'''
-        {self.gPtr} += tx % {global_tensor_shape[i]} * {stride};
-        shared_offset_data = tx % {global_tensor_shape[i]}; 
-        '''         
+    {self.gPtr} += tx % {global_tensor_shape[i]} * {stride};
+    shared_offset_data = tx % {global_tensor_shape[i]}; 
+    '''         
                     access_stride_data_dim = max(1, global_tensor_shape[dim] // (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs))
                     access_stride_data = (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) * stride
             
-            if threadblock_bs != 0 and len(global_tensor_shape) == 2:
-                globalAccess_code += f'''
-    {self.gPtr} += (tx / {int(global_tensor_shape[0] // WorkerFFTSize)}) * {global_tensor_shape[0]};
-    {self.gPtr} += (bx) * {threadblock_bs * global_tensor_shape[0]};
+            globalAccess_code += f'''
+    {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
+    bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
     '''
-            else:
-                globalAccess_code += f'''
-        {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
-        bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
-        '''
             if i == threadblock_bs_dim:
                 if not if_to_shared:
                     globalAccess_code += f'''
@@ -219,18 +211,16 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     '''
                 else:
                     globalAccess_code += f'''
-        shared_offset_bs = tx / {global_tensor_shape[dim]}; 
-        {self.gPtr} += tx / {global_tensor_shape[dim]} * {stride};
-        '''         
+    shared_offset_bs = tx / {global_tensor_shape[dim]}; 
+    {self.gPtr} += tx / {global_tensor_shape[dim]} * {stride};
+    '''         
                     access_stride_bs_dim = threadblock_bs if (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) >= 1 else global_tensor_shape[dim] // WorkerFFTSize 
                     access_stride_bs = stride if (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) >= 1 else ((WorkerFFTSize  * threadblock_bs) / global_tensor_shape[dim] * stride)
                     # print((WorkerFFTSize  * threadblock_bs) / global_tensor_shape[dim] * stride, stride, access_stride_bs)
-        if threadblock_bs != 0 and len(global_tensor_shape) == 2:
-            pass
-        else:       
-            globalAccess_code += f'''
-        {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
-        '''
+
+        globalAccess_code += f'''
+    {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
+    '''
         if if_twiddle:
             globalAccess_code += f'''
     global_k += tx / {threadblock_bs};
@@ -240,8 +230,14 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             for i in range(WorkerFFTSize):
                 if not if_output:
                     globalAccess_code += f'''
-        {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
-        '''
+    {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
+    '''
+                    if self.ft == 1:
+                        globalAccess_code += f'''
+    {self.rPtr_2}[{i}].x += {self.rPtr}[{i}].x;
+    {self.rPtr_2}[{i}].y += {self.rPtr}[{i}].y;
+    tmp.x += {self.rPtr}[{i}].x + {self.rPtr}[{i}].y;
+    '''
                 else:
                     if if_twiddle:
                         N = th.prod(global_tensor_shape[:(dim + 1)])
@@ -264,9 +260,12 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         // *({self.gPtr} + {i * access_stride}) = {self.shPtr}[threadIdx.x + {i * T * threadblock_bs}];
         // if({self.rPtr}[{dict_output[i]}].x != {self.shPtr}[threadIdx.x + {i * T * threadblock_bs}].x) printf("Hahahah \\n");
         '''
+            if self.ft == 1:
+                globalAccess_code += f'''
+        {self.rPtr}[0].x += 0.0001 * tmp.x;
+        {self.shPtr}[tx] = tmp;
+        '''
         else:
-            # print(access_stride_data, access_stride_bs)
-            # assert 0
             for j in range(access_stride_bs_dim):
                 for i in range(access_stride_data_dim):
                     globalAccess_code += f'''
@@ -306,12 +305,20 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             shared2reg_code += f'''
     offset = 0;
     '''
-            shared2reg_code += '''
+            shared2reg_code += f'''
     __syncthreads();
     '''
-            for i in range(WorkerFFTSize):
+
+            
+            for j in range(WorkerFFTSize + self.ft):
+                i = j % WorkerFFTSize
                 shared2reg_code += f'''
         {self.rPtr}[{i}] = {self.shPtr}[{access_stride * i} + (tx / {dim_1}) * {dim_1} + (tx + {i}) % {dim_1}];
+        '''
+            if self.ft == 1:
+                shared2reg_code += f'''
+        {self.rPtr_2}[{0}].y += __shfl_xor_sync(0xffffffff, {self.rPtr_2}[{0}].y, 16,32);
+        {self.rPtr_2}[{0}].y += __shfl_xor_sync(0xffffffff, {self.rPtr_2}[{0}].y, 8,32);
         '''
             return shared2reg_code
 
@@ -330,7 +337,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         shared2reg_code += '''
     __syncthreads();
     '''
-        for i in range(WorkerFFTSize):
+        for j in range(WorkerFFTSize + self.ft):
+            i = j % WorkerFFTSize
             shared2reg_code += f'''
     {self.rPtr}[{i}] = {self.shPtr}[offset + {access_stride * i}];
     '''
@@ -340,7 +348,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         logbs = int(log(bs, 2))
         # Keep the leading stride of batch size, flip the following tensor stride
         # reg_tensor_stride_reverse = th.cat((reg_tensor_stride[:logbs], reg_tensor_stride[logbs:].flip(0)), dim=0)
+        
         reg_tensor_stride_reverse = self.list_reverse(reg_tensor_stride, logbs, len(reg_tensor_stride))
+        
         # save output_id as dict so that we can visit it in an increment order
         dict_output = {}
         for i in range(WorkerFFTSize):
@@ -349,6 +359,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         return dict_output
 
     def reg2shared(self, threadblock_bs, threadblock_tensor_shape, WorkerFFTSize, dim, dict_output):
+        # Todo: swizzling not worked for dim1 < dim0
         reg2shared_code = '''
     j = 0;
     offset  = 0;
@@ -372,10 +383,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         tmp = 1
         stride = 1
         access_stride = 1
-        if threadblock_bs != 0 and len(global_tensor_shape) == 2:
-            bs_tensor_shape = threadblock_tensor_shape + [threadblock_bs]
-        else:
-            bs_tensor_shape = [threadblock_bs] + threadblock_tensor_shape
+        bs_tensor_shape = [threadblock_bs] + threadblock_tensor_shape
         for i in range(len(bs_tensor_shape)):
             stride *= bs_tensor_shape[i]
             if i == dim + 1:
@@ -433,7 +441,6 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
 
         logWorkerFFTSize = int(log(WorkerFFTSize, 2))
         st = logWorkerFFTSize - 1
-    
         
         # Skip the leading batch size
         for i in range(st, logbs - 1, -1):
@@ -494,7 +501,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
 if __name__ == '__main__':
     params = []
     # datatype = 'float2'
-    datatype = 'double2'
+    # datatype = 'double2'
+    datatype = sys.argv[1]
+    
     with open(f"../../param/param_A100_{datatype}.csv", 'r') as file:
         for line in file:
             # Splitting each line by comma
@@ -516,16 +525,15 @@ if __name__ == '__main__':
         st = row[1]
         if_special = False
         if row[1] == 1 and threadblock_bs[-1] != 1:
-            
             st = 2
             if_special = True
             global_tensor_shape.append(threadblock_bs[-1])
             threadblock_bs.append(1)
             WorkerFFTSizes.append(2)
+            
         global_tensor_shape.append(1)
         threadblock_bs_dim = [[1], [1, 0], [2, 0, 0]]
-        print(global_tensor_shape, WorkerFFTSizes, threadblock_bs, threadblock_bs_dim)
-        # assert 0
+        
         fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes,
                     threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[st - 1], data_type=datatype, if_special=if_special)
         
