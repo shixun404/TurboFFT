@@ -17,7 +17,7 @@ std::vector<std::vector<long long int>> load_parameters(
     std::ifstream file(file_name);
     
     if (file.is_open()) {
-        std::cout << "File opened successfully." << std::endl;
+        // std::cout << "File opened successfully." << std::endl;
         std::string line;
 
         while (std::getline(file, line)) {

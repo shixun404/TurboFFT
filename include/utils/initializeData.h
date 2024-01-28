@@ -13,13 +13,13 @@ namespace utils{
     int res = cudaMalloc((void**)&input_d, sizeof(DataType) * N * bs);
     res = cudaMalloc((void**)&twiddle_d, sizeof(DataType) * N * 2);
     
-    printf("%lld, %lld, %lld, %lld\n", sizeof(DataType), N, bs,
-    (long long int)sizeof(DataType) * (long long int)N * (long long int)bs);
-    printf("Intiliaze input_d status %d\n", res);
+    // printf("%lld, %lld, %lld, %lld\n", sizeof(DataType), N, bs,
+    // (long long int)sizeof(DataType) * (long long int)N * (long long int)bs);
+    // printf("Intiliaze input_d status %d\n", res);
     if(res) exit(-1);
     // checkCudaErrors(cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs));
     res = cudaMalloc((void**)&output_d, sizeof(DataType) * N * bs * 2);
-    printf("Intiliaze output_d status %d\n", res);
+    // printf("Intiliaze output_d status %d\n", res);
     if(res) exit(-1);
     for(long long int i = 0; i < N * bs; ++i){
         input[i].x = (double)(random() % 100) / (double)100;
@@ -51,13 +51,13 @@ namespace utils{
     int res = cudaMalloc((void**)&input_d, sizeof(float2) * N * bs);
     res = cudaMalloc((void**)&twiddle_d, sizeof(float2) * N * 2);
     
-    printf("%lld, %lld, %lld, %lld\n", sizeof(float2), N, bs,
-    (long long int)sizeof(float2) * (long long int)N * (long long int)bs);
-    printf("Intiliaze input_d status %d\n", res);
+    // printf("%lld, %lld, %lld, %lld\n", sizeof(float2), N, bs,
+    // (long long int)sizeof(float2) * (long long int)N * (long long int)bs);
+    // printf("Intiliaze input_d status %d\n", res);
     if(res) exit(-1);
     // checkCudaErrors(cudaMalloc((void**)&output_d, sizeof(float2) * N * bs));
     res = cudaMalloc((void**)&output_d, sizeof(float2) * N * bs * 2);
-    printf("Intiliaze output_d status %d\n", res);
+    // printf("Intiliaze output_d status %d\n", res);
     if(res) exit(-1);
     for(long long int i = 0; i < N * bs; ++i){
         input[i].x = (double)(random() % 100) / (double)100;

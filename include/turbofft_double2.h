@@ -54,8 +54,20 @@
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_2.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_26_upload_0.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_26_upload_1.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_26_upload_2.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_27_upload_0.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_27_upload_1.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_27_upload_2.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_28_upload_0.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_28_upload_1.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_28_upload_2.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_29_upload_0.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_29_upload_1.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_29_upload_2.cuh"
 
-void (*turboFFTArr[26][3])(double2 *, double2 *, double2 *, int) = {
+void (*turboFFTArr[30][3])(double2 *, double2 *, double2 *, int) = {
     {NULL, NULL, NULL},
     {fft_radix_2_logN_1_dim_0, NULL, NULL},
     {fft_radix_2_logN_2_dim_0, NULL, NULL},
@@ -81,5 +93,9 @@ void (*turboFFTArr[26][3])(double2 *, double2 *, double2 *, int) = {
     {fft_radix_2_logN_22_dim_0, fft_radix_2_logN_22_dim_1, NULL},
     {fft_radix_2_logN_23_dim_0, fft_radix_2_logN_23_dim_1, fft_radix_2_logN_23_dim_2},
     {fft_radix_2_logN_24_dim_0, fft_radix_2_logN_24_dim_1, fft_radix_2_logN_24_dim_2},
-    {fft_radix_2_logN_25_dim_0, fft_radix_2_logN_25_dim_1, fft_radix_2_logN_25_dim_2}
+    {fft_radix_2_logN_25_dim_0, fft_radix_2_logN_25_dim_1, fft_radix_2_logN_25_dim_2},
+    {fft_radix_2_logN_26_dim_0, fft_radix_2_logN_26_dim_1, fft_radix_2_logN_26_dim_2},
+    {fft_radix_2_logN_27_dim_0, fft_radix_2_logN_27_dim_1, fft_radix_2_logN_27_dim_2},
+    {fft_radix_2_logN_28_dim_0, fft_radix_2_logN_28_dim_1, fft_radix_2_logN_28_dim_2},
+    {fft_radix_2_logN_29_dim_0, fft_radix_2_logN_29_dim_1, fft_radix_2_logN_29_dim_2}
 };

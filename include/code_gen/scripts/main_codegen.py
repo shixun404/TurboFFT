@@ -17,7 +17,20 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     int kernel_launch_times = param[1];
     float gflops, elapsed_time, mem_bandwidth;
     cudaEvent_t fft_begin, fft_end;
-    // printf("adasdas\\n");
+    
+    cublasHandle_t handle;         
+    int M = 16;
+    dim3 gridDim1((N + 255) / 256, bs / M, 1);
+    '''
+    main_code += '''
+    cuDoubleComplex alpha = {1, 1}, beta = {0, 0};
+    ''' if data_type == 'double2' else '''
+    cuComplex alpha = {1, 1}, beta = {0, 0};
+    '''
+    
+    main_code += '''
+    
+    
     for(int i = 0; i < kernel_launch_times; ++i){
         // threadblock_bs = min((kernel_launch_times < 2 && bs < threadblock_bs) ? bs : param[5 + i], param[5 + i]);
         threadblock_bs = param[5 + i];
@@ -37,10 +50,49 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     cudaEventRecord(fft_begin);
     #pragma unroll
     for (int j = 0; j < ntest; ++j){
+    '''
+
+    main_code += f'''
+            // cublasDgemv(handle, CUBLAS_OP_N, N, bs, ({data_type[:-1]}*)&(alpha), 
+        //                             reinterpret_cast<{data_type[:-1]}*>(input_d), N, 
+        //                             reinterpret_cast<{data_type[:-1]}*>(input_d + bs * N), 1, ({data_type[:-1]}*)&(beta), 
+        //                              reinterpret_cast<{data_type[:-1]}*>(output_d), 1);
+        // cudaDeviceSynchronize();
+        //cublasDgemv(handle, CUBLAS_OP_T, N, bs, ({data_type[:-1]}*)&(alpha), 
+        //                            reinterpret_cast<{data_type[:-1]}*>(input_d), N, 
+         //                           reinterpret_cast<{data_type[:-1]}*>(input_d + bs * N), 1, ({data_type[:-1]}*)&(beta), 
+          //                           reinterpret_cast<{data_type[:-1]}*>(output_d), 1);
+    ''' if data_type == 'double2' else f'''
+        // cublasSgemv(handle, CUBLAS_OP_N, N, bs, ({data_type[:-1]}*)&(alpha), 
+        //                            reinterpret_cast<{data_type[:-1]}*>(input_d), N, 
+        //                            reinterpret_cast<{data_type[:-1]}*>(input_d + bs * N), 1, ({data_type[:-1]}*)&(beta), 
+        //                              reinterpret_cast<{data_type[:-1]}*>(output_d), 1);
+        // cudaDeviceSynchronize();
+        //cublasSgemv(handle, CUBLAS_OP_T, N, bs, ({data_type[:-1]}*)&(alpha), 
+        //                            reinterpret_cast<{data_type[:-1]}*>(input_d), N, 
+        //                            reinterpret_cast<{data_type[:-1]}*>(input_d + bs * N), 1, ({data_type[:-1]}*)&(beta), 
+         //                            reinterpret_cast<{data_type[:-1]}*>(output_d), 1);
+    '''
+    main_code += '''
+    // my_checksum<<<gridDim1, 256>>>(N, M, reinterpret_cast<float*>(input_d),
+    //                                          reinterpret_cast<float*>(output_d));
         #pragma unroll
         for(int i = 0; i < kernel_launch_times; ++i){
             turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, bs);
         }
+    '''
+    main_code += '''
+        //cublasDgemv(handle, CUBLAS_OP_T, N, bs, (double*)&(alpha), 
+        //                            reinterpret_cast<double*>(input_d), N, 
+        //                            reinterpret_cast<double*>(input_d + bs * N), 1, (double*)&(beta), 
+        //                             reinterpret_cast<double*>(output_d), 1);
+    '''if data_type == 'double2' else f'''
+    //cublasSgemv(handle, CUBLAS_OP_T, N, bs, ({data_type[:-1]}*)&(alpha), 
+     //                               reinterpret_cast<{data_type[:-1]}*>(input_d), N, 
+      //                              reinterpret_cast<{data_type[:-1]}*>(input_d + bs * N), 1, ({data_type[:-1]}*)&(beta), 
+       //                              reinterpret_cast<{data_type[:-1]}*>(output_d), 1);
+    '''
+    main_code += '''
         cudaDeviceSynchronize();
     }
     cudaEventRecord(fft_end);
@@ -93,11 +145,14 @@ int main(int argc, char *argv[]){
     
     if(!if_bench){
         // Verification
-        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
+        // utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
+        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs);
 
         if(if_verify){
-            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
+            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
+            
+            
             
             utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-4);
         }
@@ -106,6 +161,7 @@ int main(int argc, char *argv[]){
         if(if_profile){
             // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
             
+            // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
             test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
 
@@ -115,15 +171,17 @@ int main(int argc, char *argv[]){
     }
 
     if(if_bench){
-        printf("asdadas\\n");
+        // printf("asdadas\\n");
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, 1 << 25, 16 + 3);
         N = 1;
         for(logN = 1; logN <= 25; ++logN){
             N *= 2;
             bs = 1;
             for(int i = 0; i < 29 - logN; i += 1){
-                profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+                // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
+                // profiler::cufft::test_cufft_ft<DataType>(input_d, output_d, output_cufft, input_d + N * (bs + 2),
+                //                         input_d + N * (bs + 1), output_d + N * (bs + 2),   N, bs, ntest, 16);
                 bs *= 2;
             }
         }

@@ -13,7 +13,7 @@ class TurboFFT:
         self.rPtr = "rPtr"
         self.rPtr_2 = "rPtr_2"
         self.shPtr = "shPtr"
-        self.ft = 1
+        self.ft = 0
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
         self.threadblock_bs_dim = threadblock_bs_dim
@@ -34,8 +34,6 @@ class TurboFFT:
             threadblock_tensor_shape.reverse()
             self.threadblock_tensor_shape.append(threadblock_tensor_shape)
     def init(self, dim=0):
-        # print(dim, self.WorkerFFTSizes)
-        # bx_state = ("int", "gridDim.x - blockIdx.x - 1") if dim==2 else ("int", "blockIdx.x")
         self.local_variable = {
             "j" : ("int", "0"),
             "k" : ("int", "0"),
@@ -53,6 +51,7 @@ class TurboFFT:
             f"{self.rPtr}[{self.WorkerFFTSizes[dim] + self.ft}]": (self.data_type, None),
             f"{self.rPtr_2}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
             "tmp": (self.data_type, None),
+            "tmp1": (self.data_type, None),
             "angle": (self.data_type, None),
             "delta_angle": (self.data_type, None),
         }
@@ -78,7 +77,6 @@ class TurboFFT:
         for dim in range(len(self.global_tensor_shape) - 2, -1, -1):
             self.init(dim)
             fft_code = self.head(len(self.global_tensor_shape) - 2 - dim)
-
             threadblock_tensor_shape =  self.threadblock_tensor_shape[dim]
             threadblock_bs = self.threadblock_bs[dim]
             threadblock_bs_dim = self.threadblock_bs_dim[dim]
@@ -89,9 +87,6 @@ class TurboFFT:
             fft_code += self.globalAccess(dim, global_tensor_shape, 
                                     threadblock_bs_dim, threadblock_bs, WorkerFFTSize,
                                      blockorder)
-                                     #  blockorder, if_to_shared=(dim == 0 and len(self.global_tensor_shape) > 2))
-                                    
-                                     
             for threadblock_dim in range(len(threadblock_tensor_shape)):
                 self.state_vec = state_vec[:, :logWorkerFFTSize]
                 if threadblock_dim != 0:
@@ -116,7 +111,6 @@ class TurboFFT:
             fft_code += self.globalAccess(blockorder[dim], global_tensor_shape, 
                         blockorder[threadblock_bs_dim], threadblock_bs, WorkerFFTSize,
                             blockorder, if_output=True, dict_output=dict_output, if_twiddle=(dim!=0))
-
             fft_code += self.epilogue()
             self.fft_code.append(fft_code)
 
@@ -154,9 +148,14 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         T = int(global_tensor_shape[dim] / WorkerFFTSize)
         globalAccess_code = f'''bx = {self.local_variable["bx"][1]};
     tx = threadIdx.x;
-    tmp.x = 0;
-    tmp.y = 0;
     ''' 
+        if self.ft == 1:
+            globalAccess_code += f'''
+    tmp1.x = 0;
+    tmp1.y = 0;
+    {self.rPtr_2}[0].x = 0;
+    {self.rPtr_2}[0].y = 0;
+    '''
         access_stride_bs_dim = 1
         access_stride_data_dim =  1
         access_stride_bs = 1
@@ -216,7 +215,6 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     '''         
                     access_stride_bs_dim = threadblock_bs if (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) >= 1 else global_tensor_shape[dim] // WorkerFFTSize 
                     access_stride_bs = stride if (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs) >= 1 else ((WorkerFFTSize  * threadblock_bs) / global_tensor_shape[dim] * stride)
-                    # print((WorkerFFTSize  * threadblock_bs) / global_tensor_shape[dim] * stride, stride, access_stride_bs)
 
         globalAccess_code += f'''
     {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
@@ -234,9 +232,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     '''
                     if self.ft == 1:
                         globalAccess_code += f'''
-    {self.rPtr_2}[{i}].x += {self.rPtr}[{i}].x;
-    {self.rPtr_2}[{i}].y += {self.rPtr}[{i}].y;
-    tmp.x += {self.rPtr}[{i}].x + {self.rPtr}[{i}].y;
+    {self.rPtr_2}[0].x += {self.rPtr}[{i}].x;
+    {self.rPtr_2}[0].y += {self.rPtr}[{i}].y;
+    tmp1.x += 0.00001f * {self.rPtr_2}[0].x + 0.00001f * {self.rPtr_2}[0].y;
     '''
                 else:
                     if if_twiddle:
@@ -262,8 +260,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         '''
             if self.ft == 1:
                 globalAccess_code += f'''
-        {self.rPtr}[0].x += 0.0001 * tmp.x;
-        {self.shPtr}[tx] = tmp;
+        {self.rPtr}[0].x += 0.0001f * tmp1.x;
+        {self.shPtr}[tx] = tmp1;
         '''
         else:
             for j in range(access_stride_bs_dim):
@@ -301,6 +299,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                          / WorkerFFTSize)
         dim_0 = threadblock_tensor_shape[0]
         dim_1 = threadblock_tensor_shape[1]
+        
         if len(threadblock_tensor_shape) == 2 and len(self.global_tensor_shape) == 2 :
             shared2reg_code += f'''
     offset = 0;
@@ -317,9 +316,12 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         '''
             if self.ft == 1:
                 shared2reg_code += f'''
-        {self.rPtr_2}[{0}].y += __shfl_xor_sync(0xffffffff, {self.rPtr_2}[{0}].y, 16,32);
-        {self.rPtr_2}[{0}].y += __shfl_xor_sync(0xffffffff, {self.rPtr_2}[{0}].y, 8,32);
-        '''
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 16,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 8,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 4,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 2,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 1,32);
+            '''
             return shared2reg_code
 
         if dim == 1 and len(self.global_tensor_shape) == 2 :
@@ -342,6 +344,14 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             shared2reg_code += f'''
     {self.rPtr}[{i}] = {self.shPtr}[offset + {access_stride * i}];
     '''
+        if self.ft == 1:
+            shared2reg_code += f'''
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 16,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 8,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 4,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 2,32);
+            {self.rPtr}[2].y += __shfl_xor_sync(0xffffffff, 0.0001f * {self.rPtr_2}[{0}].y, 1,32);
+            '''
         return shared2reg_code
 
     def reg_output_remap(self, bs, reg_tensor_stride, WorkerFFTSize):
@@ -442,18 +452,13 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         logWorkerFFTSize = int(log(WorkerFFTSize, 2))
         st = logWorkerFFTSize - 1
         
-        # Skip the leading batch size
         for i in range(st, logbs - 1, -1):
-            # print("*************************")
-            # print(reg_tensor_stride[i])
             for j in range(WorkerFFTSize):
                 if self.state_vec[j, i] == 1:
                     continue
                 id_j1 = int(th.dot(self.state_vec[j], reg_tensor_stride))
                 id_j2 = int(id_j1 + reg_tensor_stride[i])
                 id_k = int(th.dot(self.state_vec[j, logbs:i], reg_tensor_stride[:i - logbs]))                
-                # print(id_k, self.state_vec[j, logbs:i], reg_tensor_stride[:i - logbs], reg_tensor_stride, logbs, i)
-                # print(id_j1, id_j2, id_k, i,  (2 ** (i + 1 - logbs)), st, logbs)
                 tmp_angle = (-2 * id_k * 1 / (2 ** (i + 1 - logbs))) * pi
                 rel_bounds = 1e-8
                 abs_bounds = 1e-5
