@@ -43,6 +43,7 @@
 #include "code_gen/generated/double2/fft_radix_2_logN_20_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_21_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_21_upload_1.cuh"
+#include "code_gen/generated/double2/fft_radix_2_logN_21_upload_2.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_22_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_22_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_23_upload_0.cuh"
@@ -89,7 +90,7 @@ void (*turboFFTArr[30][3])(double2 *, double2 *, double2 *, int) = {
     {fft_radix_2_logN_18_dim_0, fft_radix_2_logN_18_dim_1, NULL},
     {fft_radix_2_logN_19_dim_0, fft_radix_2_logN_19_dim_1, NULL},
     {fft_radix_2_logN_20_dim_0, fft_radix_2_logN_20_dim_1, NULL},
-    {fft_radix_2_logN_21_dim_0, fft_radix_2_logN_21_dim_1, NULL},
+    {fft_radix_2_logN_21_dim_0, fft_radix_2_logN_21_dim_1, fft_radix_2_logN_21_dim_2},
     {fft_radix_2_logN_22_dim_0, fft_radix_2_logN_22_dim_1, NULL},
     {fft_radix_2_logN_23_dim_0, fft_radix_2_logN_23_dim_1, fft_radix_2_logN_23_dim_2},
     {fft_radix_2_logN_24_dim_0, fft_radix_2_logN_24_dim_1, fft_radix_2_logN_24_dim_2},

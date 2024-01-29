@@ -2,7 +2,7 @@
     #include "include/turbofft_double2.h"
     #define DataType double2
     
-
+int threadblock_per_SM = 1;
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, std::vector<long long int> param, 
                     long long int bs, int ntest){
@@ -29,15 +29,47 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         Ni = (1 << param[2 + i]); 
         WorkerFFTSize = param[8 + i]; 
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
-        if(threadblock_bs != 1 && i == 0)griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
-        else griddims[i] = (N * bs) / (Ni * threadblock_bs);
+        // if(threadblock_bs != 1 && i == 0)griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
+        // else griddims[i] = (N * bs) / (Ni * threadblock_bs);
+        // griddims[i] = ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
+        // griddims[i] = 512 * ((128 * 1024) / shared_size[i]);
+        
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
+        // griddims[i] = 128 * min((2048 / blockdims[i]), ((64 * 1024 + shared_size[i] - 1) / shared_size[i]));
+        long long int shared_per_SM = 160 * 1024;
+        // shared_per_SM = max(shared_per_SM, shared_size[i]);
+        shared_per_SM = min(shared_size[i] * threadblock_per_SM, shared_per_SM);
+        griddims[i] = min(108 * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
+                ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs));
+        griddims[i] = (((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs)) / 1;
+        printf("griddim=%d, ", griddims[i]);
+        // griddims[i] = 108 * (2048 / blockdims[i]);
         // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\n", i, griddims[i], blockdims[i], shared_size[i]);
-        cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]);
+        cudaFuncAttributes attr;
+    
+
+        
+
+        
+        if(cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]))
+        printf("Set DynamicSharedMem failed\n");
+        else printf("Smem_per_block=%d KB, ",  shared_size[i] / 1024);
+        if(cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributePreferredSharedMemoryCarveout, (shared_per_SM * 100) / (164 * 1024)))
+        printf("Set smemCarveout failed\n");
+        else printf("SmemCarveout=%d KB, ", shared_per_SM / 1024);
+        cudaError_t get_attr_res = cudaFuncGetAttributes (&attr, turboFFTArr[logN][i] );
+        if(get_attr_res != 0)
+        printf("get_attr_res = %d\n", get_attr_res);
+        else printf("get_attr_res = %d, smem_per_block=%d, smem_per_SM=%d\n", get_attr_res, attr.maxDynamicSharedSizeBytes, 
+        attr.preferredShmemCarveout);
     }
     
     cudaEventCreate(&fft_begin);
     cudaEventCreate(&fft_end);
+    #pragma unroll
+    for(int i = 0; i < kernel_launch_times; ++i){
+            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, bs);
+    }
 
     cudaEventRecord(fft_begin);
     #pragma unroll
@@ -58,6 +90,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         #pragma unroll
         for(int i = 0; i < kernel_launch_times; ++i){
             turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, bs);
+            // cudaDeviceSynchronize();
         }
     
         //cublasDgemv(handle, CUBLAS_OP_T, N, bs, (double*)&(alpha), 
@@ -96,9 +129,10 @@ int main(int argc, char *argv[]){
     bool if_verify = 0;
     bool if_bench = 0;
     
-    if (argc >= 4) if_profile = std::atol(argv[3]);
-    if (argc >= 5) if_verify  = std::atol(argv[4]);
-    if (argc >= 6) if_bench = std::atol(argv[5]);
+    if (argc >= 4) threadblock_per_SM = std::atol(argv[3]);
+    if (argc >= 5) if_profile = std::atol(argv[4]);
+    if (argc >= 6) if_verify  = std::atol(argv[5]);
+    if (argc >= 7) if_bench = std::atol(argv[6]);
     
 
     DataType* input, *output_turbofft, *output_cufft;

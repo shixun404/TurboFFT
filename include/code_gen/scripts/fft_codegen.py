@@ -116,12 +116,28 @@ class TurboFFT:
 
     def head(self, dim):
         N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
+        Ni = self.global_tensor_shape[len(self.global_tensor_shape) - 2 -dim]
+        threadblock_bs = self.threadblock_bs[len(self.global_tensor_shape) - 2 -dim]
         if self.if_special:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
             dim = 0
         head = f'''extern __shared__ {self.data_type} shared[];
 __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}''' \
         + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, int BS)''' + ''' {
+    // ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs);
+    int bid_cnt = 0;
+    '''
+        head += f'''
+    //#pragma unroll
+    //for(int bid = blockIdx.x; bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += gridDim.x)
+    int threadblock_per_SM = 2;
+    int tb_gap = threadblock_per_SM * 108;
+    int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
+    for(int bid = (blockIdx.x / tb_gap) * tb_gap * 1 + blockIdx.x % tb_gap;
+                bid_cnt < 1 && bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += delta_bid)
+    '''
+        head += '''{
+    bid_cnt += 1;
     '''
         for key in self.local_variable.keys():
             head += f'''{self.local_variable[key][0]} {key};
@@ -134,6 +150,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     
     def epilogue(self, ):
         epilogue = '''
+    }
 }
 '''
         return epilogue
@@ -146,7 +163,9 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         threadblock_tensor_shape[threadblock_bs_dim] = threadblock_bs
 
         T = int(global_tensor_shape[dim] / WorkerFFTSize)
-        globalAccess_code = f'''bx = {self.local_variable["bx"][1]};
+        globalAccess_code = f'''        
+    // bx = {self.local_variable["bx"][1]};
+    bx = bid;
     tx = threadIdx.x;
     ''' 
         if self.ft == 1:
@@ -522,8 +541,6 @@ if __name__ == '__main__':
         global_tensor_shape = [2 ** i for i in row[2:(2 + row[1])]]
         threadblock_bs = row[5:(5 + row[1])]
         WorkerFFTSizes = row[8:(8 + row[1])]
-        
-        
         threadblock_bs.reverse()
         global_tensor_shape.reverse()
         WorkerFFTSizes.reverse()
