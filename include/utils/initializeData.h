@@ -22,8 +22,10 @@ namespace utils{
     // printf("Intiliaze output_d status %d\n", res);
     if(res) exit(-1);
     for(long long int i = 0; i < N * bs; ++i){
-        input[i].x = (double)(random() % 100) / (double)100;
-        input[i].y = (double)(random() % 100) / (double)100;
+        // input[i].x = (double)(random() % 100) / (double)100;
+        // input[i].y = (double)(random() % 100) / (double)100;
+        input[i].x = 1;
+        input[i].y = 0;
     }
 
     long long int cur_N = 1;

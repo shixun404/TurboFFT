@@ -13,6 +13,7 @@
 #include "utils/printData.h"
 #include "utils/initializeData.h"
 #include "utils/readCSV.h"
+#include "utils/abft.h"
 
 #include "code_gen/generated/double2/fft_radix_2_logN_1_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_2_upload_0.cuh"
@@ -68,7 +69,7 @@
 #include "code_gen/generated/double2/fft_radix_2_logN_29_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_29_upload_2.cuh"
 
-void (*turboFFTArr[30][3])(double2 *, double2 *, double2 *, int) = {
+void (*turboFFTArr[30][3])(double2 *, double2 *, double2 *, double2*, int) = {
     {NULL, NULL, NULL},
     {fft_radix_2_logN_1_dim_0, NULL, NULL},
     {fft_radix_2_logN_2_dim_0, NULL, NULL},
@@ -90,7 +91,7 @@ void (*turboFFTArr[30][3])(double2 *, double2 *, double2 *, int) = {
     {fft_radix_2_logN_18_dim_0, fft_radix_2_logN_18_dim_1, NULL},
     {fft_radix_2_logN_19_dim_0, fft_radix_2_logN_19_dim_1, NULL},
     {fft_radix_2_logN_20_dim_0, fft_radix_2_logN_20_dim_1, NULL},
-    {fft_radix_2_logN_21_dim_0, fft_radix_2_logN_21_dim_1, fft_radix_2_logN_21_dim_2},
+    {fft_radix_2_logN_21_dim_0, fft_radix_2_logN_21_dim_1, NULL},
     {fft_radix_2_logN_22_dim_0, fft_radix_2_logN_22_dim_1, NULL},
     {fft_radix_2_logN_23_dim_0, fft_radix_2_logN_23_dim_1, fft_radix_2_logN_23_dim_2},
     {fft_radix_2_logN_24_dim_0, fft_radix_2_logN_24_dim_1, fft_radix_2_logN_24_dim_2},

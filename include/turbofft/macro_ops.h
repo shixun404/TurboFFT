@@ -14,6 +14,9 @@
 #define turboFFT_ZADD(c, a, b) c.x = a.x + b.x; c.y = a.y + b.y;
 #define turboFFT_ZSUB(c, a, b) c.x = a.x - b.x; c.y = a.y - b.y;
 #define turboFFT_ZMUL(c, a, b) c.x = a.x * b.x; c.x -= a.y * b.y; c.y = a.y * b.x; c.y += a.x * b.y;
+#define turboFFT_ZMUL_ACC(c, a, b) c.x += a.x * b.x; c.x -= a.y * b.y; c.y += a.y * b.x; c.y += a.x * b.y;
+#define turboFFT_ZMUL_NACC(c, a, b) c.x -= a.x * b.x; c.x += a.y * b.y; c.y -= a.y * b.x; c.y -= a.x * b.y;
+
 
 // #define turboFFT_ZADD(c, a, b) c.x = a.x + b.x; c.y += a.y + b.y; c.x = a.x + b.x; c.y += a.y + b.y;
 // #define turboFFT_ZSUB(c, a, b) c.x = a.x - b.x; c.y += a.y - b.y; c.x = a.x - b.x; c.y += a.y - b.y;

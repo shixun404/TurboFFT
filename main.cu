@@ -4,7 +4,7 @@
     
 int threadblock_per_SM = 1;
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
-                    DataType* twiddle_d, std::vector<long long int> param, 
+                    DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
                     long long int bs, int ntest){
     long long int N = (1 << param[0]), threadblock_bs, Ni, WorkerFFTSize;
     long long int logN = param[0];
@@ -15,13 +15,12 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     float gflops, elapsed_time, mem_bandwidth;
     cudaEvent_t fft_begin, fft_end;
     
-    cublasHandle_t handle;         
+    cublasHandle_t handle;      
+
     int M = 16;
     dim3 gridDim1((N + 255) / 256, bs / M, 1);
     
     cuDoubleComplex alpha = {1, 1}, beta = {0, 0};
-    
-    
     
     for(int i = 0; i < kernel_launch_times; ++i){
         // threadblock_bs = min((kernel_launch_times < 2 && bs < threadblock_bs) ? bs : param[5 + i], param[5 + i]);
@@ -38,37 +37,36 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         // griddims[i] = 128 * min((2048 / blockdims[i]), ((64 * 1024 + shared_size[i] - 1) / shared_size[i]));
         long long int shared_per_SM = 160 * 1024;
         // shared_per_SM = max(shared_per_SM, shared_size[i]);
-        shared_per_SM = min(shared_size[i] * threadblock_per_SM, shared_per_SM);
+        // shared_per_SM = min(shared_size[i] * threadblock_per_SM, shared_per_SM);
+        shared_per_SM = 128 * 1024;
         griddims[i] = min(108 * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
                 ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs));
-        griddims[i] = (((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs)) / 1;
-        printf("griddim=%d, ", griddims[i]);
+        
+        griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / 1;
+    
+        // printf("griddim=%d, ", griddims[i]);
         // griddims[i] = 108 * (2048 / blockdims[i]);
         // printf("kernel=%d: gridDim=%d, blockDim=%d, share_mem_size=%d\n", i, griddims[i], blockdims[i], shared_size[i]);
         cudaFuncAttributes attr;
-    
 
-        
-
-        
         if(cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]))
         printf("Set DynamicSharedMem failed\n");
-        else printf("Smem_per_block=%d KB, ",  shared_size[i] / 1024);
+        // else printf("Smem_per_block=%d KB, ",  shared_size[i] / 1024);
         if(cudaFuncSetAttribute(turboFFTArr[logN][i], cudaFuncAttributePreferredSharedMemoryCarveout, (shared_per_SM * 100) / (164 * 1024)))
         printf("Set smemCarveout failed\n");
-        else printf("SmemCarveout=%d KB, ", shared_per_SM / 1024);
+        // else printf("SmemCarveout=%d KB, ", shared_per_SM / 1024);
         cudaError_t get_attr_res = cudaFuncGetAttributes (&attr, turboFFTArr[logN][i] );
         if(get_attr_res != 0)
         printf("get_attr_res = %d\n", get_attr_res);
-        else printf("get_attr_res = %d, smem_per_block=%d, smem_per_SM=%d\n", get_attr_res, attr.maxDynamicSharedSizeBytes, 
-        attr.preferredShmemCarveout);
+        // else printf("get_attr_res = %d, smem_per_block=%d, smem_per_SM=%d\n", get_attr_res, attr.maxDynamicSharedSizeBytes, 
+        // attr.preferredShmemCarveout);
     }
     
     cudaEventCreate(&fft_begin);
     cudaEventCreate(&fft_end);
     #pragma unroll
     for(int i = 0; i < kernel_launch_times; ++i){
-            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, bs);
+            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
     }
 
     cudaEventRecord(fft_begin);
@@ -89,7 +87,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     //                                          reinterpret_cast<float*>(output_d));
         #pragma unroll
         for(int i = 0; i < kernel_launch_times; ++i){
-            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, bs);
+            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
             // cudaDeviceSynchronize();
         }
     
@@ -104,8 +102,6 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     cudaEventSynchronize(fft_begin);
     cudaEventSynchronize(fft_end);
     cudaEventElapsedTime(&elapsed_time, fft_begin, fft_end);
-
-    
     elapsed_time = elapsed_time / ntest;
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
     mem_bandwidth = (float)(N * bs * sizeof(DataType) * 2) / (elapsed_time) * 1000.f / 1000000000.f;
@@ -129,10 +125,9 @@ int main(int argc, char *argv[]){
     bool if_verify = 0;
     bool if_bench = 0;
     
-    if (argc >= 4) threadblock_per_SM = std::atol(argv[3]);
-    if (argc >= 5) if_profile = std::atol(argv[4]);
-    if (argc >= 6) if_verify  = std::atol(argv[5]);
-    if (argc >= 7) if_bench = std::atol(argv[6]);
+    if (argc >= 4) if_profile = std::atol(argv[3]);
+    if (argc >= 5) if_verify  = std::atol(argv[4]);
+    if (argc >= 6) if_bench = std::atol(argv[5]);
     
 
     DataType* input, *output_turbofft, *output_cufft;
@@ -145,6 +140,17 @@ int main(int argc, char *argv[]){
     
     params = utils::load_parameters(param_file_path);
 
+    DataType* checksum_d, *checksum_h;
+    cudaMalloc((void**)&checksum_d, sizeof(DataType) * 16384 * 2);
+    checksum_h = (double2*)calloc(16384 * 2, sizeof(DataType));
+    DataType* dest = checksum_h;
+    for(int i = 2; i <= (1 << 13); i *= 2){
+        utils::getDFTMatrixChecksum(dest, i);
+        dest += i;
+    }
+    // utils::printData<DataType>(checksum_h + 62, 64);
+    cudaMemcpy((void*)checksum_d, (void*)checksum_h, sizeof(DataType) * 16384 * 2, cudaMemcpyHostToDevice);
+
 
     
     if(!if_bench){
@@ -153,29 +159,21 @@ int main(int argc, char *argv[]){
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs);
 
         if(if_verify){
-            profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);
-            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, 1);
-            
-            
-            
+            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, 1);
+            profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);            
             utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-4);
         }
-
         // Profiling
         if(if_profile){
-            // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
-            
+            // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d + (1 << logN) - 2, params[logN], bs, ntest);           
             // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
-
-            
-            // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);
+            test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, ntest);
+            // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d + (1 << logN) - 2, params[logN], bs, ntest);
         }
     }
-
+    
     if(if_bench){
-        // printf("asdadas\n");
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, 1 << 25, 16 + 3);
         N = 1;
         for(logN = 1; logN <= 25; ++logN){
@@ -183,7 +181,7 @@ int main(int argc, char *argv[]){
             bs = 1;
             for(int i = 0; i < 29 - logN; i += 1){
                 // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-                test_turbofft(input_d, output_d, output_turbofft, twiddle_d, params[logN], bs, ntest);        
+                test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, ntest);        
                 // profiler::cufft::test_cufft_ft<DataType>(input_d, output_d, output_cufft, input_d + N * (bs + 2),
                 //                         input_d + N * (bs + 1), output_d + N * (bs + 2),   N, bs, ntest, 16);
                 bs *= 2;

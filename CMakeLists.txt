@@ -13,7 +13,7 @@ find_package(CUDA REQUIRED)
 # Include the TurboFFT directory
 include_directories("include/")
 
-include_directories("/global/homes/s/swu264/HPCDeepNeuralNetworks/cuda-samples/Common/")
+include_directories("~/cuda-samples/Common/")
 
 # Specify the executable and its source files
 add_executable(turbofft main.cu)

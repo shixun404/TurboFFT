@@ -13,6 +13,7 @@
 #include "utils/printData.h"
 #include "utils/initializeData.h"
 #include "utils/readCSV.h"
+#include "utils/abft.h"
 
 #include "code_gen/generated/float2/fft_radix_2_logN_1_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_2_upload_0.cuh"
@@ -55,7 +56,7 @@
 #include "code_gen/generated/float2/fft_radix_2_logN_25_upload_2.cuh"
 
 // void (*turboFFTArr[26][3])(double2 *, double2 *, double2 *, int) = {
-void (*turboFFTArr[26][3])(float2 *, float2 *, float2 *, int) = {
+void (*turboFFTArr[26][3])(float2 *, float2 *, float2 *, float2 *, int) = {
     {NULL, NULL, NULL},
     {fft_radix_2_logN_1_dim_0, NULL, NULL},
     {fft_radix_2_logN_2_dim_0, NULL, NULL},
