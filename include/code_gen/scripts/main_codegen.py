@@ -76,7 +76,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     cudaEventCreate(&fft_end);
     #pragma unroll
     for(int i = 0; i < kernel_launch_times; ++i){
-            turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
+           // turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
     }
 
     cudaEventRecord(fft_begin);
@@ -111,7 +111,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         #pragma unroll
         for(int i = 0; i < kernel_launch_times; ++i){
             turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
-            // cudaDeviceSynchronize();
+            cudaDeviceSynchronize();
         }
     '''
     main_code += '''
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]){
 
     DataType* checksum_d, *checksum_h;
     cudaMalloc((void**)&checksum_d, sizeof(DataType) * 16384 * 2);
-    checksum_h = (double2*)calloc(16384 * 2, sizeof(DataType));
+    checksum_h = (DataType*)calloc(16384 * 2, sizeof(DataType));
     DataType* dest = checksum_h;
     for(int i = 2; i <= (1 << 13); i *= 2){
         utils::getDFTMatrixChecksum(dest, i);
