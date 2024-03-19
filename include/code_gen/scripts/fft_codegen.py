@@ -314,7 +314,10 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             globalAccess_code += f'''
     global_k += tx / {threadblock_bs};
     '''
-        
+        if self.ft == 1 and self.err_injection and if_output:
+            globalAccess_code += f'''
+            if(threadIdx.x == 0 && blockIdx.x == 0 && bid_cnt == 0) {self.rPtr}[0].x += 10000;
+    '''
         if not if_to_shared:
             if self.ft == 1 and if_output and not if_correction:
                 globalAccess_code += f'''
