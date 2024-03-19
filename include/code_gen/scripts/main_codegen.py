@@ -5,7 +5,6 @@ def main_codegen(data_type, thread_bs):
     '''
 
     main_code += '''
-int threadblock_per_SM = 1;
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
                     long long int bs, int ntest){
@@ -76,7 +75,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     cudaEventCreate(&fft_end);
     #pragma unroll
     for(int i = 0; i < kernel_launch_times; ++i){
-           // turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
+        turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
     }
 
     cudaEventRecord(fft_begin);

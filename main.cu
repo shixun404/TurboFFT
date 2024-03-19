@@ -1,8 +1,7 @@
 
-    #include "include/turbofft_float2.h"
-    #define DataType float2
+    #include "include/turbofft_double2.h"
+    #define DataType double2
     
-int threadblock_per_SM = 1;
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
                     long long int bs, int ntest){
@@ -20,7 +19,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     int M = 16;
     dim3 gridDim1((N + 255) / 256, bs / M, 1);
     
-    cuComplex alpha = {1, 1}, beta = {0, 0};
+    cuDoubleComplex alpha = {1, 1}, beta = {0, 0};
     
     for(int i = 0; i < kernel_launch_times; ++i){
         // threadblock_bs = min((kernel_launch_times < 2 && bs < threadblock_bs) ? bs : param[5 + i], param[5 + i]);
@@ -42,7 +41,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         griddims[i] = min(108 * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
                 ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs));
         
-        griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / 1;
+        griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / 4;
     
         // printf("griddim=%d, ", griddims[i]);
         // griddims[i] = 108 * (2048 / blockdims[i]);
@@ -66,22 +65,22 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     cudaEventCreate(&fft_end);
     #pragma unroll
     for(int i = 0; i < kernel_launch_times; ++i){
-           // turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
+        turboFFTArr[logN][i]<<<griddims[i], blockdims[i], shared_size[i]>>>(inputs[i], outputs[i], twiddle_d, checksum, bs);
     }
 
     cudaEventRecord(fft_begin);
     #pragma unroll
     for (int j = 0; j < ntest; ++j){
     
-        // cublasSgemv(handle, CUBLAS_OP_N, N, bs, (float*)&(alpha), 
-        //                            reinterpret_cast<float*>(input_d), N, 
-        //                            reinterpret_cast<float*>(input_d + bs * N), 1, (float*)&(beta), 
-        //                              reinterpret_cast<float*>(output_d), 1);
+            // cublasDgemv(handle, CUBLAS_OP_N, N, bs, (double*)&(alpha), 
+        //                             reinterpret_cast<double*>(input_d), N, 
+        //                             reinterpret_cast<double*>(input_d + bs * N), 1, (double*)&(beta), 
+        //                              reinterpret_cast<double*>(output_d), 1);
         // cudaDeviceSynchronize();
-        //cublasSgemv(handle, CUBLAS_OP_T, N, bs, (float*)&(alpha), 
-        //                            reinterpret_cast<float*>(input_d), N, 
-        //                            reinterpret_cast<float*>(input_d + bs * N), 1, (float*)&(beta), 
-         //                            reinterpret_cast<float*>(output_d), 1);
+        //cublasDgemv(handle, CUBLAS_OP_T, N, bs, (double*)&(alpha), 
+        //                            reinterpret_cast<double*>(input_d), N, 
+         //                           reinterpret_cast<double*>(input_d + bs * N), 1, (double*)&(beta), 
+          //                           reinterpret_cast<double*>(output_d), 1);
     
     // my_checksum<<<gridDim1, 256>>>(N, M, reinterpret_cast<float*>(input_d),
     //                                          reinterpret_cast<float*>(output_d));
@@ -91,10 +90,10 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
             cudaDeviceSynchronize();
         }
     
-    //cublasSgemv(handle, CUBLAS_OP_T, N, bs, (float*)&(alpha), 
-     //                               reinterpret_cast<float*>(input_d), N, 
-      //                              reinterpret_cast<float*>(input_d + bs * N), 1, (float*)&(beta), 
-       //                              reinterpret_cast<float*>(output_d), 1);
+        //cublasDgemv(handle, CUBLAS_OP_T, N, bs, (double*)&(alpha), 
+        //                            reinterpret_cast<double*>(input_d), N, 
+        //                            reinterpret_cast<double*>(input_d + bs * N), 1, (double*)&(beta), 
+        //                             reinterpret_cast<double*>(output_d), 1);
     
         cudaDeviceSynchronize();
     }
@@ -136,7 +135,7 @@ int main(int argc, char *argv[]){
 
     std::vector<std::vector<long long int>> params;
     
-    std::string param_file_path = "../include/param/param_A100_float2.csv";
+    std::string param_file_path = "../include/param/param_A100_double2.csv";
     
     params = utils::load_parameters(param_file_path);
 
@@ -161,7 +160,7 @@ int main(int argc, char *argv[]){
         if(if_verify){
             test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, 1);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, 1);            
-            utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-3);
+            utils::compareData<DataType>(output_turbofft, output_cufft, N * bs, 1e-4);
         }
         // Profiling
         if(if_profile){
