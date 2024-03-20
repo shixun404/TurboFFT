@@ -41,7 +41,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         griddims[i] = min(108 * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
                 ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs));
         
-        griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / 4;
+        griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / 1;
     
         // printf("griddim=%d, ", griddims[i]);
         // griddims[i] = 108 * (2048 / blockdims[i]);
