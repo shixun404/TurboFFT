@@ -1,12 +1,13 @@
 import torch as th
 from math import *
+import argparse
 import numpy as np
 from main_codegen import main_codegen
 import sys
 class TurboFFT:
     def __init__(self, global_tensor_shape=[256, 1], radix=2, WorkerFFTSizes = [8],
                         threadblock_bs=[1], threadblock_bs_dim=[0], shared_mem_size=[0], data_type='double2',
-                        if_special=False, err_injection=1):
+                        if_special=False, if_ft=0, if_err_injection=0,  err_smoothing=1000, err_inj=100, err_threshold=1e-3):
         self.fft_code = []
         self.data_type = data_type
         self.gPtr = "gPtr"
@@ -15,10 +16,13 @@ class TurboFFT:
         self.rPtr_3 = "rPtr_3"
         self.rPtr_4 = "rPtr_4"
         self.shPtr = "shPtr"
-        self.err_injection = err_injection
+        self.if_err_injection = if_err_injection
+        self.err_inj = err_inj
+        self.err_smoothing = err_smoothing
+        self.err_threshold = err_threshold
         self.shared_mem_size=shared_mem_size
         self.thread_bs = 1
-        self.ft = 1
+        self.ft = 0
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
         self.threadblock_bs_dim = threadblock_bs_dim
@@ -123,7 +127,7 @@ class TurboFFT:
             fft_code += self.globalAccess(blockorder[dim], global_tensor_shape, 
                         blockorder[threadblock_bs_dim], threadblock_bs, WorkerFFTSize,
                             blockorder, if_output=True, dict_output=dict_output, if_twiddle=(dim!=0))
-            if self.ft == 1 and self.err_injection == 1:
+            if self.ft == 1 and self.if_err_injection == 1:
                 fft_code += '''
                 }
                  if(k != -1){
@@ -144,7 +148,7 @@ class TurboFFT:
                 blockorder = [i for i in range(len(global_tensor_shape))]
                 fft_code += self.globalAccess(dim, global_tensor_shape, 
                                     threadblock_bs_dim, threadblock_bs, WorkerFFTSize,
-                                     blockorder, if_correction=True)
+                                     blockorder, if_correction=self.if_err_injection)
                 for threadblock_dim in range(len(threadblock_tensor_shape)):
                     self.state_vec = state_vec[:, :logWorkerFFTSize]
                     if threadblock_dim != 0:
@@ -166,7 +170,7 @@ class TurboFFT:
                     global_tensor_shape = self.list_reverse(global_tensor_shape, 0, -1)
                 fft_code += self.globalAccess(blockorder[dim], global_tensor_shape, 
                             blockorder[threadblock_bs_dim], threadblock_bs, WorkerFFTSize,
-                                blockorder, if_output=True, dict_output=dict_output, if_twiddle=(dim!=0), if_correction=True)
+                                blockorder, if_output=True, dict_output=dict_output, if_twiddle=(dim!=0), if_correction=self.if_err_injection)
                 fft_code += '''}}'''
             else:
                 fft_code += self.epilogue()
@@ -212,7 +216,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     {self.shPtr}[tx + {i * num_thread}] = {self.rPtr_2}[{i}];
     '''
             head += f'''
-    // __syncthreads();
+    __syncthreads();
     tmp_1.x = 0;
     tmp_1.y = 0;
     '''
@@ -380,12 +384,13 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             // if(threadIdx.x == 0 && blockIdx.x == 0)printf("i=%d, rx=%f ry=%f r4x=%f r4y=%f\\n", {i}, {self.rPtr}[{dict_output[i]}].x
             //  ,{self.rPtr}[{dict_output[i]}].y, {self.rPtr_4}[{dict_output[i]}].x, {self.rPtr_4}[{dict_output[i]}].y );
             turboFFT_ZSUB({self.rPtr}[{dict_output[i]}], {self.rPtr}[{dict_output[i]}], {self.rPtr_4}[{i}]);
+            // turboFFT_ZSUB({self.rPtr}[{dict_output[i]}], {self.rPtr}[{dict_output[i]}], {self.rPtr_2}[{i}]);
             '''
-            if self.ft == 1 and self.err_injection and not if_output and len(self.fft_code) == len(self.shared_mem_size) - 1 and not if_correction:
+            if self.ft == 1 and self.if_err_injection and not if_output and len(self.fft_code) == len(self.shared_mem_size) - 1 and not if_correction:
                 globalAccess_code += f'''
             // if(threadIdx.x == 0 && blockIdx.x == 0 && bid_cnt == 1) printf("asdadas\\n");
             // if(threadIdx.x == 0 && blockIdx.x == 0 && bid_cnt == 1) {self.rPtr}[0].x += 100;
-            {self.rPtr}[0].x += ((threadIdx.x + blockIdx.x) == 0 && bid_cnt == 1) ? 100: 0;
+            {self.rPtr}[0].x += ((threadIdx.x + blockIdx.x) == 0 && bid_cnt == 1) ? {self.err_inj}: 0;
             '''    
                 
         else:
@@ -415,15 +420,15 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 2, 32);
         tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 1, 32);
 
-        // tmp_1.x = tmp_2.x + tmp_2.y;
-        // tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 16, 32);
-        // tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 8, 32);
-        // tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 4, 32);
-        // tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 2, 32);
-        // tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 1, 32);
+         tmp_1.x = tmp_2.x + tmp_2.y;
+         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 16, 32);
+         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 8, 32);
+         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 4, 32);
+         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 2, 32);
+         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 1, 32);
         __syncthreads();
         // if(tx % 32 == 0) {self.shPtr}[tx / 32] = tmp_1;
-        // {self.shPtr}[tx / 32] = tmp_1;
+        {self.shPtr}[tx / 32] = tmp_1;
         __syncthreads();
         // if(tx < 32)
         '''
@@ -436,13 +441,13 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                 i //= 2
                 globalAccess_code += f'''
                 tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, {i}, 32);
-                // tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, {i}, 32);
+                tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, {i}, 32);
         '''
             globalAccess_code  += f'''
-            // if(tx == 0 && abs(tmp_1.y) / (1000 + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
-            // if(abs(tmp_1.y / tmp_1.x) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
-            // k = abs(tmp_1.y) / (1000 + abs(tmp_1.x)) > 1e-3 ? bid : k;
-            k = abs(tmp_1.y) > 10 ? bid : k;
+            // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
+            // if(abs(tmp_1.y / tmp_1.x) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
+            k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? bid : k;
+            // k = abs(tmp_1.y) > 10 ? bid : k;
             // if(tx == 0) *({self.gPtr}) = tmp_1;
             // if(tx == 0 && abs(tmp_1.y / tmp_1.x) > 1e-3)
             '''
@@ -457,6 +462,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
             {self.rPtr_4}[{i}].x += {self.rPtr}[{dict_output[i]}].x;
             {self.rPtr_4}[{i}].y += {self.rPtr}[{dict_output[i]}].y;
+            // {self.rPtr_2}[{i}].x += {self.rPtr}[{dict_output[i]}].x;
+            // {self.rPtr_2}[{i}].y += {self.rPtr}[{dict_output[i]}].y;
             '''     
                 else:
                     globalAccess_code += f'''
@@ -674,7 +681,31 @@ if __name__ == '__main__':
     params = []
     # datatype = 'float2'
     # datatype = 'double2'
-    datatype = sys.argv[1]
+    parser = argparse.ArgumentParser(description="turboFFT.")
+    parser.add_argument('--if_ft', type=int, default=0, 
+                        help='Flag to indicate feature transformation (0 for False, 1 for True)')
+    parser.add_argument('--if_err_injection', type=int, default=0, 
+                        help='Flag to indicate error injection (0 for False, 1 for True)')
+    parser.add_argument('--err_smoothing', type=int, default=1000, 
+                        help='Error smoothing parameter')
+    parser.add_argument('--err_inj', type=int, default=100, 
+                        help='Error injection parameter')
+    parser.add_argument('--err_threshold', type=float, default=1e-3, 
+                        help='Error threshold')
+    parser.add_argument('--datatype', type=str, default="double2", 
+                        help='Data type with a default value of "double2"')
+
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Access arguments
+    if_ft = args.if_ft
+    if_err_injection = args.if_err_injection
+    err_smoothing = args.err_smoothing
+    err_inj = args.err_inj
+    err_threshold = args.err_threshold
+    datatype = args.datatype
     
     with open(f"../../param/param_A100_{datatype}.csv", 'r') as file:
         for line in file:
@@ -683,8 +714,6 @@ if __name__ == '__main__':
             row = [int(element) for element in split_elements]
             params.append(row)
     
-    # global_tensor_shape = [256, 256, 128, 1]
-    # for row in params[21:22]:
     for row in params:
         global_tensor_shape = [2 ** i for i in row[2:(2 + row[1])]]
         threadblock_bs = row[5:(5 + row[1])]
@@ -708,8 +737,9 @@ if __name__ == '__main__':
         threadblock_bs_dim = [[1], [1, 0], [2, 0, 0]]
         
         fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes,
-                    threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[st - 1], shared_mem_size=shared_mem_size, data_type=datatype, if_special=if_special)
-        
+                    threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[st - 1], shared_mem_size=shared_mem_size, data_type=datatype, if_special=if_special,
+                    if_ft=if_ft, if_err_injection=if_err_injection, err_inj=err_inj, 
+                    err_smoothing=err_smoothing, err_threshold=err_threshold)
         fft.codegen()
         fft.save_generated_code()
         main_code = main_codegen(datatype, fft.thread_bs)
