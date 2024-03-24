@@ -1,0 +1,60 @@
+Performing C++ SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /global/homes/s/swu264/turboFFT/build_test/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_60e3b/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_60e3b.dir/build.make CMakeFiles/cmTC_60e3b.dir/build
+gmake[1]: Entering directory '/global/u1/s/swu264/turboFFT/build_test/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_60e3b.dir/src.cxx.o
+/usr/bin/c++ -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_60e3b.dir/src.cxx.o -c /global/homes/s/swu264/turboFFT/build_test/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_60e3b
+/global/common/software/nersc/pm-2022q4/spack/linux-sles15-zen/cmake-3.24.3-k5msymx/bin/cmake -E cmake_link_script CMakeFiles/cmTC_60e3b.dir/link.txt --verbose=1
+/usr/bin/c++ CMakeFiles/cmTC_60e3b.dir/src.cxx.o -o cmTC_60e3b 
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: CMakeFiles/cmTC_60e3b.dir/src.cxx.o: in function `main':
+src.cxx:(.text+0x2d): undefined reference to `pthread_create'
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: src.cxx:(.text+0x39): undefined reference to `pthread_detach'
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: src.cxx:(.text+0x45): undefined reference to `pthread_cancel'
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: src.cxx:(.text+0x56): undefined reference to `pthread_join'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_60e3b.dir/build.make:99: cmTC_60e3b] Error 1
+gmake[1]: Leaving directory '/global/u1/s/swu264/turboFFT/build_test/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_60e3b/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+static void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_cancel(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /global/homes/s/swu264/turboFFT/build_test/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_3e80f/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_3e80f.dir/build.make CMakeFiles/cmTC_3e80f.dir/build
+gmake[1]: Entering directory '/global/u1/s/swu264/turboFFT/build_test/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_3e80f.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=pthread_create -o CMakeFiles/cmTC_3e80f.dir/CheckFunctionExists.cxx.o -c /global/homes/s/swu264/turboFFT/build_test/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
+Linking CXX executable cmTC_3e80f
+/global/common/software/nersc/pm-2022q4/spack/linux-sles15-zen/cmake-3.24.3-k5msymx/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3e80f.dir/link.txt --verbose=1
+/usr/bin/c++  -DCHECK_FUNCTION_EXISTS=pthread_create CMakeFiles/cmTC_3e80f.dir/CheckFunctionExists.cxx.o -o cmTC_3e80f  -lpthreads 
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: cannot find -lpthreads: No such file or directory
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_3e80f.dir/build.make:99: cmTC_3e80f] Error 1
+gmake[1]: Leaving directory '/global/u1/s/swu264/turboFFT/build_test/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_3e80f/fast] Error 2
+
+
+
