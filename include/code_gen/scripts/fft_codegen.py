@@ -58,7 +58,7 @@ class TurboFFT:
             self.gPtr: (f"{self.data_type}*", "inputs"),
             self.shPtr: (f"{self.data_type}*", "shared"),
             f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
-            #f"{self.rPtr_2}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
+            f"{self.rPtr_2}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
             f"{self.rPtr_3}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
             f"{self.rPtr_4}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
             "tmp": (self.data_type, None),
@@ -208,7 +208,14 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                 head += f'''{key} = {self.local_variable[key][1]};
     '''
         if self.ft == 1:
+            for i in range(max(1, global_tensor_shape[dim_] / (global_tensor_shape[dim_] / WorkerFFTSize * threadblock_bs))):
+                head += f'''
+    {self.rPtr_2}[{i}] = *(checksum_DFT + {global_tensor_shape[dim_]} - 2 + tx + {i * num_thread});
+    {self.shPtr}[tx + {i * num_thread}] = {self.rPtr_2}[{i}];
+    '''
+        if self.ft == 1:
             head += f'''
+    __syncthreads();
     tmp_1.x = 0;
     tmp_1.y = 0;
     tmp_2.x = 0;
@@ -218,9 +225,11 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     '''
             for i in range(WorkerFFTSize):
                 head += f'''
+    {self.rPtr_2}[{i}] = *({self.shPtr} +  tx / {threadblock_bs} + {i * (global_tensor_shape[dim_] // WorkerFFTSize)});
     {self.rPtr_3}[{i}].x = 0; {self.rPtr_3}[{i}].y = 0;
     {self.rPtr_4}[{i}].x = 0; {self.rPtr_4}[{i}].y = 0;
     '''
+    
         head += f'''
     int bid = 0;
     for(bid = (blockIdx.x / tb_gap) * tb_gap * {self.thread_bs} + blockIdx.x % tb_gap;
@@ -322,9 +331,20 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         {self.rPtr_3}[{i}].x += {self.rPtr}[{i}].x;
         {self.rPtr_3}[{i}].y += {self.rPtr}[{i}].y;
         '''
+                        if self.ft == 1 and not if_correction:
+                            globalAccess_code += f'''
+        // tmp = checksum_DFT[tx / {threadblock_bs} + {i * (global_tensor_shape[self.dim_] // WorkerFFTSize)}];
+        // turboFFT_ZMUL_ACC(tmp_1, {self.rPtr}[{i}], tmp);
+        //  turboFFT_ZMUL_ACC(tmp_1, {self.rPtr}[{i}], {self.rPtr_2}[{i}])
+        // turboFFT_ZMUL(tmp, {self.rPtr}[{i}], {self.rPtr_2}[{i}])
+        // tmp_1.x += tmp.x;
+        // tmp_1.y += tmp.y;
+        // tmp_3.x += bid_cnt * {self.rPtr}[{i}].x;
+        '''
                     else:
                         globalAccess_code += f'''
         {self.rPtr}[{i}] = {self.rPtr_3}[{i}];
+        // {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
         '''
                 else:
                     if self.ft == 1 and not if_correction:
@@ -350,7 +370,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             '''
                     if if_correction:
                         globalAccess_code += f'''
-            turboFFT_ZSUB({self.rPtr}[{dict_output[i]}], {self.rPtr}[{dict_output[i]}], {self.rPtr_4}[{i}]);
+            // turboFFT_ZSUB({self.rPtr}[{dict_output[i]}], {self.rPtr}[{dict_output[i]}], {self.rPtr_4}[{i}]);
             '''
             if self.ft == 1 and not if_output and not if_correction:
                 globalAccess_code += f'''
@@ -376,6 +396,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             {self.rPtr_3}[{i}] = *({self.gPtr} + {i * access_stride});
             turboFFT_ZADD({self.rPtr_3}[{i}], {self.rPtr_3}[{i}], {self.rPtr}[{dict_output[i]}] );
             *({self.gPtr} + {i * access_stride}) = {self.rPtr_3}[{i}];
+            // *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
         '''                    
         if self.ft == 1 and if_output and not if_correction:
             globalAccess_code += f'''
