@@ -231,6 +231,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
     '''
     
         head += f'''
+    __syncthreads();
     int bid = 0;
     for(bid = (blockIdx.x / tb_gap) * tb_gap * {self.thread_bs} + blockIdx.x % tb_gap;
                 bid_cnt < {self.thread_bs} && bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += delta_bid)
@@ -415,11 +416,13 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         // 1's vector
         // tmp.x = (tx / {threadblock_bs} == 0) ? ({self.rPtr_3}[0].y + {self.rPtr_3}[0].x) * {global_tensor_shape[dim]}: 0;
         // tmp.y = (tx / {threadblock_bs} == 0) ? (abs({self.rPtr_3}[0].y) + abs({self.rPtr_3}[0].x)) * {global_tensor_shape[dim]}: 0;
+        tmp = tmp_1;
         tmp_1.y += tmp.x;
-        tmp_1.x = abs(tmp.y);
+        tmp_1.x = (abs(tmp.y) + abs(tmp.x));
         
         // 1's vector
         // tmp.x = (tx / {threadblock_bs} == 0) ? tmp_3.x : 0;
+        tmp.x = tmp_3.x;
         tmp_3.y = tmp.x + tmp_3.y;
         tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 16, 32);
         tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 8, 32);
@@ -458,11 +461,11 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         '''
             globalAccess_code  += f'''
             // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
-            // if(abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
+            // if(abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // if(tx == 0)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
             // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            // if((blockIdx.x % {self.thread_bs} + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)))  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            //                                         bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x, tmp_3.y, tmp_3.y / tmp_1.y);
+            if((blockIdx.x % {self.thread_bs} + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)))  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
+                                                     bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x, tmp_3.y, tmp_3.y / tmp_1.y);
             // if(abs(tmp_1.y / tmp_1.x) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? bid : k;
             k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? round(abs(tmp_3.y) / abs(tmp_1.y)) : k;
@@ -609,8 +612,6 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
 
             if dim == 0 and len(self.global_tensor_shape) == 2 :
                 reg2shared_code += f'''
-    // {self.rPtr_2}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
-    // {self.rPtr_2}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
     {self.shPtr}[offset + {access_stride} * ({output_id} + threadIdx.x % {threadblock_tensor_shape[1]}) % {threadblock_tensor_shape[1]} + ({output_id} / {threadblock_tensor_shape[1]}) * {threadblock_tensor_shape[1]}] = {self.rPtr}[{dict_output[output_id]}];
     '''             
             else:
