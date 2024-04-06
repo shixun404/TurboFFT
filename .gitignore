@@ -1,6 +1,7 @@
 build/*
 build+old/
 build_1/*
+build*
 .vscode/*
 *.sh
 **/__pycache__/
