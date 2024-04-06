@@ -1,6 +1,6 @@
 
-    #include "include/turbofft_double2.h"
-    #define DataType double2
+    #include "include/turbofft_float2.h"
+    #define DataType float2
     
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
@@ -19,7 +19,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     int M = 16;
     dim3 gridDim1((N + 255) / 256, bs / M, 1);
     
-    cuDoubleComplex alpha = {1, 1}, beta = {0, 0};
+    cuComplex alpha = {1, 1}, beta = {0, 0};
     
     for(int i = 0; i < kernel_launch_times; ++i){
         // threadblock_bs = min((kernel_launch_times < 2 && bs < threadblock_bs) ? bs : param[5 + i], param[5 + i]);
@@ -41,7 +41,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         griddims[i] = min(108 * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
                 ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs));
         
-        griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / 32;
+        griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / 1;
     
         // printf("griddim=%d, ", griddims[i]);
         // griddims[i] = 108 * (2048 / blockdims[i]);
@@ -72,15 +72,15 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     #pragma unroll
     for (int j = 0; j < ntest; ++j){
     
-            // cublasDgemv(handle, CUBLAS_OP_N, N, bs, (double*)&(alpha), 
-        //                             reinterpret_cast<double*>(input_d), N, 
-        //                             reinterpret_cast<double*>(input_d + bs * N), 1, (double*)&(beta), 
-        //                              reinterpret_cast<double*>(output_d), 1);
+        // cublasSgemv(handle, CUBLAS_OP_N, N, bs, (float*)&(alpha), 
+        //                            reinterpret_cast<float*>(input_d), N, 
+        //                            reinterpret_cast<float*>(input_d + bs * N), 1, (float*)&(beta), 
+        //                              reinterpret_cast<float*>(output_d), 1);
         // cudaDeviceSynchronize();
-        //cublasDgemv(handle, CUBLAS_OP_T, N, bs, (double*)&(alpha), 
-        //                            reinterpret_cast<double*>(input_d), N, 
-         //                           reinterpret_cast<double*>(input_d + bs * N), 1, (double*)&(beta), 
-          //                           reinterpret_cast<double*>(output_d), 1);
+        //cublasSgemv(handle, CUBLAS_OP_T, N, bs, (float*)&(alpha), 
+        //                            reinterpret_cast<float*>(input_d), N, 
+        //                            reinterpret_cast<float*>(input_d + bs * N), 1, (float*)&(beta), 
+         //                            reinterpret_cast<float*>(output_d), 1);
     
     // my_checksum<<<gridDim1, 256>>>(N, M, reinterpret_cast<float*>(input_d),
     //                                          reinterpret_cast<float*>(output_d));
@@ -90,10 +90,10 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
             cudaDeviceSynchronize();
         }
     
-        //cublasDgemv(handle, CUBLAS_OP_T, N, bs, (double*)&(alpha), 
-        //                            reinterpret_cast<double*>(input_d), N, 
-        //                            reinterpret_cast<double*>(input_d + bs * N), 1, (double*)&(beta), 
-        //                             reinterpret_cast<double*>(output_d), 1);
+    //cublasSgemv(handle, CUBLAS_OP_T, N, bs, (float*)&(alpha), 
+     //                               reinterpret_cast<float*>(input_d), N, 
+      //                              reinterpret_cast<float*>(input_d + bs * N), 1, (float*)&(beta), 
+       //                              reinterpret_cast<float*>(output_d), 1);
     
         cudaDeviceSynchronize();
     }
@@ -123,11 +123,14 @@ int main(int argc, char *argv[]){
     bool if_profile = 1;
     bool if_verify = 0;
     bool if_bench = 0;
+    long long bs_end = bs;
+    long long bs_gap = 1;
     
-    if (argc >= 4) if_profile = std::atol(argv[3]);
-    if (argc >= 5) if_verify  = std::atol(argv[4]);
-    if (argc >= 6) if_bench = std::atol(argv[5]);
-    
+    if (argc >= 4) bs_end = std::atol(argv[3]);
+    if (argc >= 5) bs_gap = std::atol(argv[4]);
+    if (argc >= 6) if_profile = std::atol(argv[5]);
+    if (argc >= 7) if_verify  = std::atol(argv[6]);
+    if (argc >= 8) if_bench = std::atol(argv[7]);
 
     DataType* input, *output_turbofft, *output_cufft;
     DataType* input_d, *output_d, *twiddle_d;
@@ -135,7 +138,7 @@ int main(int argc, char *argv[]){
 
     std::vector<std::vector<long long int>> params;
     
-    std::string param_file_path = "../include/param/param_A100_double2.csv";
+    std::string param_file_path = "../include/param/param_A100_float2.csv";
     
     params = utils::load_parameters(param_file_path);
 
@@ -155,7 +158,7 @@ int main(int argc, char *argv[]){
     if(!if_bench){
         // Verification
         // utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
-        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs);
+        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs_end);
 
         if(if_verify){
             test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, 1);
@@ -166,7 +169,11 @@ int main(int argc, char *argv[]){
         if(if_profile){
             // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d + (1 << logN) - 2, params[logN], bs, ntest);           
             // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+            long long int bs_begin = bs;
+            for(bs = bs_begin; bs <= bs_end; bs += bs_gap)
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+            
+            for(bs = bs_begin; bs <= bs_end; bs += bs_gap)
             test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, ntest);
             // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d + (1 << logN) - 2, params[logN], bs, ntest);
         }
@@ -178,14 +185,18 @@ int main(int argc, char *argv[]){
         for(logN = 1; logN <= 25; ++logN){
             N *= 2;
             bs = 1;
+            // bs = bs << (28-logN);
             for(int i = 0; i < 29 - logN; i += 1){
                 // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, ntest);        
                 // profiler::cufft::test_cufft_ft<DataType>(input_d, output_d, output_cufft, input_d + N * (bs + 2),
                 //                         input_d + N * (bs + 1), output_d + N * (bs + 2),   N, bs, ntest, 16);
                 bs *= 2;
+                // break; 
             }
         }
+
+   
 
     }
     cudaFree(input_d);

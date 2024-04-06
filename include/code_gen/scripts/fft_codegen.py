@@ -21,7 +21,7 @@ class TurboFFT:
         self.err_smoothing = err_smoothing
         self.err_threshold = err_threshold
         self.shared_mem_size=shared_mem_size
-        self.thread_bs = 32
+        self.thread_bs = 1
         self.ft = if_ft
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
@@ -343,8 +343,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         '''
                     else:
                         globalAccess_code += f'''
-        {self.rPtr}[{i}] = {self.rPtr_3}[{i}];
-        // {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
+        // {self.rPtr}[{i}] = {self.rPtr_3}[{i}];
+        {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
         '''
                 else:
                     if self.ft == 1 and not if_correction:
@@ -400,10 +400,10 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             '''     
                 else:
                     globalAccess_code += f'''
-            {self.rPtr_3}[{i}] = *({self.gPtr} + {i * access_stride});
-            turboFFT_ZADD({self.rPtr_3}[{i}], {self.rPtr_3}[{i}], {self.rPtr}[{dict_output[i]}] );
-            *({self.gPtr} + {i * access_stride}) = {self.rPtr_3}[{i}];
-            // *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
+            // {self.rPtr_3}[{i}] = *({self.gPtr} + {i * access_stride});
+            // turboFFT_ZADD({self.rPtr_3}[{i}], {self.rPtr_3}[{i}], {self.rPtr}[{dict_output[i]}] );
+            // *({self.gPtr} + {i * access_stride}) = {self.rPtr_3}[{i}];
+            *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
         '''                    
         if self.ft == 1 and if_output and not if_correction:
             globalAccess_code += f'''
@@ -464,8 +464,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             // if(abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // if(tx == 0)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
             // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            if((blockIdx.x % {self.thread_bs} + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)))  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-                                                     bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x, tmp_3.y, tmp_3.y / tmp_1.y);
+            // if((blockIdx.x % {self.thread_bs} + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)) && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} )  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
+            //                                         bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x, tmp_3.y, tmp_3.y / tmp_1.y);
             // if(abs(tmp_1.y / tmp_1.x) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? bid : k;
             k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? round(abs(tmp_3.y) / abs(tmp_1.y)) : k;

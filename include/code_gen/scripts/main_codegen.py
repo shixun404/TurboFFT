@@ -153,11 +153,14 @@ int main(int argc, char *argv[]){
     bool if_profile = 1;
     bool if_verify = 0;
     bool if_bench = 0;
+    long long bs_end = bs;
+    long long bs_gap = 1;
     
-    if (argc >= 4) if_profile = std::atol(argv[3]);
-    if (argc >= 5) if_verify  = std::atol(argv[4]);
-    if (argc >= 6) if_bench = std::atol(argv[5]);
-    
+    if (argc >= 4) bs_end = std::atol(argv[3]);
+    if (argc >= 5) bs_gap = std::atol(argv[4]);
+    if (argc >= 6) if_profile = std::atol(argv[5]);
+    if (argc >= 7) if_verify  = std::atol(argv[6]);
+    if (argc >= 8) if_bench = std::atol(argv[7]);
 
     DataType* input, *output_turbofft, *output_cufft;
     DataType* input_d, *output_d, *twiddle_d;
@@ -187,7 +190,7 @@ int main(int argc, char *argv[]){
     if(!if_bench){
         // Verification
         // utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs + 3);
-        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs);
+        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, N, bs_end);
 
         if(if_verify){
             test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, 1);
@@ -198,7 +201,11 @@ int main(int argc, char *argv[]){
         if(if_profile){
             // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d + (1 << logN) - 2, params[logN], bs, ntest);           
             // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+            long long int bs_begin = bs;
+            for(bs = bs_begin; bs <= bs_end; bs += bs_gap)
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+            
+            for(bs = bs_begin; bs <= bs_end; bs += bs_gap)
             test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, ntest);
             // test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d + (1 << logN) - 2, params[logN], bs, ntest);
         }
@@ -210,14 +217,18 @@ int main(int argc, char *argv[]){
         for(logN = 1; logN <= 25; ++logN){
             N *= 2;
             bs = 1;
+            // bs = bs << (28-logN);
             for(int i = 0; i < 29 - logN; i += 1){
                 // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 test_turbofft(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, ntest);        
                 // profiler::cufft::test_cufft_ft<DataType>(input_d, output_d, output_cufft, input_d + N * (bs + 2),
                 //                         input_d + N * (bs + 1), output_d + N * (bs + 2),   N, bs, ntest, 16);
                 bs *= 2;
+                // break; 
             }
         }
+
+   
 
     }
     cudaFree(input_d);

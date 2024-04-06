@@ -29,6 +29,7 @@
 #include "code_gen/generated/float2/fft_radix_2_logN_12_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_13_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_14_upload_0.cuh"
+#include "code_gen/generated/float2/fft_radix_2_logN_14_upload_1.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_15_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_15_upload_1.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_16_upload_0.cuh"
@@ -71,7 +72,7 @@ void (*turboFFTArr[26][3])(float2 *, float2 *, float2 *, float2 *, int) = {
     {fft_radix_2_logN_11_dim_0, NULL, NULL},
     {fft_radix_2_logN_12_dim_0, NULL, NULL},
     {fft_radix_2_logN_13_dim_0, NULL, NULL},
-    {fft_radix_2_logN_14_dim_0, NULL, NULL},
+    {fft_radix_2_logN_14_dim_0, fft_radix_2_logN_14_dim_1, NULL},
     {fft_radix_2_logN_15_dim_0, fft_radix_2_logN_15_dim_1, NULL},
     {fft_radix_2_logN_16_dim_0, fft_radix_2_logN_16_dim_1, NULL},
     {fft_radix_2_logN_17_dim_0, fft_radix_2_logN_17_dim_1, NULL},
