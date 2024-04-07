@@ -19,9 +19,9 @@
 
 
 
-template <typename DataType>
+template <typename DataType, int if_ft, int if_err_injection>
 struct TurboFFT_Kernel_Entry {
-void (*turboFFTArr[30][3])(DataType *, DataType *, DataType *, DataType*, int, int);
+void (*turboFFTArr[26][3])(DataType *, DataType *, DataType *, DataType*, int, int);
 };
 
 template <typename DataType>
@@ -71,39 +71,6 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
 #include "code_gen/generated/float2/fft_radix_2_logN_25_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_25_upload_1.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_25_upload_2.cuh"
-
-template<>
-struct TurboFFT_Kernel_Entry<float2> {
-    void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) = {
-        {NULL, NULL, NULL},
-        {fft_radix_2<float2, 1, 0>, NULL, NULL},
-        {fft_radix_2<float2, 2, 0>, NULL, NULL},
-        {fft_radix_2<float2, 3, 0>, NULL, NULL},
-        {fft_radix_2<float2, 4, 0>, NULL, NULL},
-        {fft_radix_2<float2, 5, 0>, NULL, NULL},
-        {fft_radix_2<float2, 6, 0>, NULL, NULL},
-        {fft_radix_2<float2, 7, 0>, NULL, NULL},
-        {fft_radix_2<float2, 8, 0>, NULL, NULL},
-        {fft_radix_2<float2, 9, 0>, NULL, NULL},
-        {fft_radix_2<float2, 10, 0>, NULL, NULL},
-        {fft_radix_2<float2, 11, 0>, NULL, NULL},
-        {fft_radix_2<float2, 12, 0>, NULL, NULL},
-        {fft_radix_2<float2, 13, 0>, NULL, NULL},
-        {fft_radix_2<float2, 14, 0>, fft_radix_2<float2, 14, 1>, NULL},
-        {fft_radix_2<float2, 15, 0>, fft_radix_2<float2, 15, 1>, NULL},
-        {fft_radix_2<float2, 16, 0>, fft_radix_2<float2, 16, 1>, NULL},
-        {fft_radix_2<float2, 17, 0>, fft_radix_2<float2, 17, 1>, NULL},
-        {fft_radix_2<float2, 18, 0>, fft_radix_2<float2, 18, 1>, NULL},
-        {fft_radix_2<float2, 19, 0>, fft_radix_2<float2, 19, 1>, NULL},
-        {fft_radix_2<float2, 20, 0>, fft_radix_2<float2, 20, 1>, NULL},
-        {fft_radix_2<float2, 21, 0>, fft_radix_2<float2, 21, 1>, NULL},
-        {fft_radix_2<float2, 22, 0>, fft_radix_2<float2, 22, 1>, NULL},
-        {fft_radix_2<float2, 23, 0>, fft_radix_2<float2, 23, 1>, fft_radix_2<float2, 23, 2>},
-        {fft_radix_2<float2, 24, 0>, fft_radix_2<float2, 24, 1>, fft_radix_2<float2, 24, 2>},
-        {fft_radix_2<float2, 25, 0>, fft_radix_2<float2, 25, 1>, fft_radix_2<float2, 25, 2>}
-    };
-};
-
 
 #include "code_gen/generated/double2/fft_radix_2_logN_1_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_2_upload_0.cuh"
@@ -158,36 +125,205 @@ struct TurboFFT_Kernel_Entry<float2> {
 #include "code_gen/generated/double2/fft_radix_2_logN_29_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_29_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_29_upload_2.cuh"
+template<> struct TurboFFT_Kernel_Entry<float2, 0, 0>
+{
+void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
+ {NULL, NULL, NULL},
+{fft_radix_2<float2, 1, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 2, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 3, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 4, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 5, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 6, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 7, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 8, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 9, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 10, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 11, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 12, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 13, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 14, 0, 0, 0>, fft_radix_2<float2, 14, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 15, 0, 0, 0>, fft_radix_2<float2, 15, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 16, 0, 0, 0>, fft_radix_2<float2, 16, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 17, 0, 0, 0>, fft_radix_2<float2, 17, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 18, 0, 0, 0>, fft_radix_2<float2, 18, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 19, 0, 0, 0>, fft_radix_2<float2, 19, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 20, 0, 0, 0>, fft_radix_2<float2, 20, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 21, 0, 0, 0>, fft_radix_2<float2, 21, 1, 0, 0>, NULL},
+{fft_radix_2<float2, 22, 0, 0, 0>, fft_radix_2<float2, 22, 1, 0, 0>, fft_radix_2<float2, 22, 2, 0, 0>},
+{fft_radix_2<float2, 23, 0, 0, 0>, fft_radix_2<float2, 23, 1, 0, 0>, fft_radix_2<float2, 23, 2, 0, 0>},
+{fft_radix_2<float2, 24, 0, 0, 0>, fft_radix_2<float2, 24, 1, 0, 0>, fft_radix_2<float2, 24, 2, 0, 0>},
+{fft_radix_2<float2, 25, 0, 0, 0>, fft_radix_2<float2, 25, 1, 0, 0>, fft_radix_2<float2, 25, 2, 0, 0>},
+
+};
+};
 
 
-template <>
-struct TurboFFT_Kernel_Entry<double2> {
-void (*turboFFTArr[26][3])(double2 *, double2 *, double2 *, double2*, int, int) = {
-    {NULL, NULL, NULL},
-    {fft_radix_2<double2, 1, 0>, NULL, NULL},
-    {fft_radix_2<double2, 2, 0>, NULL, NULL},
-    {fft_radix_2<double2, 3, 0>, NULL, NULL},
-    {fft_radix_2<double2, 4, 0>, NULL, NULL},
-    {fft_radix_2<double2, 5, 0>, NULL, NULL},
-    {fft_radix_2<double2, 6, 0>, NULL, NULL},
-    {fft_radix_2<double2, 7, 0>, NULL, NULL},
-    {fft_radix_2<double2, 8, 0>, NULL, NULL},
-    {fft_radix_2<double2, 9, 0>, NULL, NULL},
-    {fft_radix_2<double2, 10, 0>, NULL, NULL},
-    {fft_radix_2<double2, 11, 0>, NULL, NULL},
-    {fft_radix_2<double2, 12, 0>, NULL, NULL},
-    {fft_radix_2<double2, 13, 0>, NULL, NULL},
-    {fft_radix_2<double2, 14, 0>, fft_radix_2<double2, 14, 1>, NULL},
-    {fft_radix_2<double2, 15, 0>, fft_radix_2<double2, 15, 1>, NULL},
-    {fft_radix_2<double2, 16, 0>, fft_radix_2<double2, 16, 1>, NULL},
-    {fft_radix_2<double2, 17, 0>, fft_radix_2<double2, 17, 1>, NULL},
-    {fft_radix_2<double2, 18, 0>, fft_radix_2<double2, 18, 1>, NULL},
-    {fft_radix_2<double2, 19, 0>, fft_radix_2<double2, 19, 1>, NULL},
-    {fft_radix_2<double2, 20, 0>, fft_radix_2<double2, 20, 1>, NULL},
-    {fft_radix_2<double2, 21, 0>, fft_radix_2<double2, 21, 1>, NULL},
-    {fft_radix_2<double2, 22, 0>, fft_radix_2<double2, 22, 1>, NULL},
-    {fft_radix_2<double2, 23, 0>, fft_radix_2<double2, 23, 1>, fft_radix_2<double2, 23, 2>},
-    {fft_radix_2<double2, 24, 0>, fft_radix_2<double2, 24, 1>, fft_radix_2<double2, 24, 2>},
-    {fft_radix_2<double2, 25, 0>, fft_radix_2<double2, 25, 1>, fft_radix_2<double2, 25, 2>}
+template<> struct TurboFFT_Kernel_Entry<float2, 1, 0>
+{
+void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
+ {NULL, NULL, NULL},
+{fft_radix_2<float2, 1, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 2, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 3, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 4, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 5, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 6, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 7, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 8, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 9, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 10, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 11, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 12, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 13, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 14, 0, 1, 0>, fft_radix_2<float2, 14, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 15, 0, 1, 0>, fft_radix_2<float2, 15, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 16, 0, 1, 0>, fft_radix_2<float2, 16, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 17, 0, 1, 0>, fft_radix_2<float2, 17, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 18, 0, 1, 0>, fft_radix_2<float2, 18, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 19, 0, 1, 0>, fft_radix_2<float2, 19, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 20, 0, 1, 0>, fft_radix_2<float2, 20, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 21, 0, 1, 0>, fft_radix_2<float2, 21, 1, 1, 0>, NULL},
+{fft_radix_2<float2, 22, 0, 1, 0>, fft_radix_2<float2, 22, 1, 1, 0>, fft_radix_2<float2, 22, 2, 1, 0>},
+{fft_radix_2<float2, 23, 0, 1, 0>, fft_radix_2<float2, 23, 1, 1, 0>, fft_radix_2<float2, 23, 2, 1, 0>},
+{fft_radix_2<float2, 24, 0, 1, 0>, fft_radix_2<float2, 24, 1, 1, 0>, fft_radix_2<float2, 24, 2, 1, 0>},
+{fft_radix_2<float2, 25, 0, 1, 0>, fft_radix_2<float2, 25, 1, 1, 0>, fft_radix_2<float2, 25, 2, 1, 0>},
+
+};
+};
+
+
+template<> struct TurboFFT_Kernel_Entry<float2, 1, 1>
+{
+void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
+ {NULL, NULL, NULL},
+{fft_radix_2<float2, 1, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 2, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 3, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 4, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 5, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 6, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 7, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 8, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 9, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 10, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 11, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 12, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 13, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 14, 0, 1, 1>, fft_radix_2<float2, 14, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 15, 0, 1, 1>, fft_radix_2<float2, 15, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 16, 0, 1, 1>, fft_radix_2<float2, 16, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 17, 0, 1, 1>, fft_radix_2<float2, 17, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 18, 0, 1, 1>, fft_radix_2<float2, 18, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 19, 0, 1, 1>, fft_radix_2<float2, 19, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 20, 0, 1, 1>, fft_radix_2<float2, 20, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 21, 0, 1, 1>, fft_radix_2<float2, 21, 1, 1, 1>, NULL},
+{fft_radix_2<float2, 22, 0, 1, 1>, fft_radix_2<float2, 22, 1, 1, 1>, fft_radix_2<float2, 22, 2, 1, 1>},
+{fft_radix_2<float2, 23, 0, 1, 1>, fft_radix_2<float2, 23, 1, 1, 1>, fft_radix_2<float2, 23, 2, 1, 1>},
+{fft_radix_2<float2, 24, 0, 1, 1>, fft_radix_2<float2, 24, 1, 1, 1>, fft_radix_2<float2, 24, 2, 1, 1>},
+{fft_radix_2<float2, 25, 0, 1, 1>, fft_radix_2<float2, 25, 1, 1, 1>, fft_radix_2<float2, 25, 2, 1, 1>},
+
+};
+};
+
+
+template<> struct TurboFFT_Kernel_Entry<double2, 0, 0>
+{
+void (*turboFFTArr [26][3])(double2 *, double2 *, double2 *, double2 *, int, int) ={
+ {NULL, NULL, NULL},
+{fft_radix_2<double2, 1, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 2, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 3, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 4, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 5, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 6, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 7, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 8, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 9, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 10, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 11, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 12, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 13, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<double2, 14, 0, 0, 0>, fft_radix_2<double2, 14, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 15, 0, 0, 0>, fft_radix_2<double2, 15, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 16, 0, 0, 0>, fft_radix_2<double2, 16, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 17, 0, 0, 0>, fft_radix_2<double2, 17, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 18, 0, 0, 0>, fft_radix_2<double2, 18, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 19, 0, 0, 0>, fft_radix_2<double2, 19, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 20, 0, 0, 0>, fft_radix_2<double2, 20, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 21, 0, 0, 0>, fft_radix_2<double2, 21, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 22, 0, 0, 0>, fft_radix_2<double2, 22, 1, 0, 0>, NULL},
+{fft_radix_2<double2, 23, 0, 0, 0>, fft_radix_2<double2, 23, 1, 0, 0>, fft_radix_2<double2, 23, 2, 0, 0>},
+{fft_radix_2<double2, 24, 0, 0, 0>, fft_radix_2<double2, 24, 1, 0, 0>, fft_radix_2<double2, 24, 2, 0, 0>},
+{fft_radix_2<double2, 25, 0, 0, 0>, fft_radix_2<double2, 25, 1, 0, 0>, fft_radix_2<double2, 25, 2, 0, 0>},
+
+};
+};
+
+
+template<> struct TurboFFT_Kernel_Entry<double2, 1, 0>
+{
+void (*turboFFTArr [26][3])(double2 *, double2 *, double2 *, double2 *, int, int) ={
+ {NULL, NULL, NULL},
+{fft_radix_2<double2, 1, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 2, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 3, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 4, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 5, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 6, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 7, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 8, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 9, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 10, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 11, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 12, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 13, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<double2, 14, 0, 1, 0>, fft_radix_2<double2, 14, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 15, 0, 1, 0>, fft_radix_2<double2, 15, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 16, 0, 1, 0>, fft_radix_2<double2, 16, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 17, 0, 1, 0>, fft_radix_2<double2, 17, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 18, 0, 1, 0>, fft_radix_2<double2, 18, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 19, 0, 1, 0>, fft_radix_2<double2, 19, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 20, 0, 1, 0>, fft_radix_2<double2, 20, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 21, 0, 1, 0>, fft_radix_2<double2, 21, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 22, 0, 1, 0>, fft_radix_2<double2, 22, 1, 1, 0>, NULL},
+{fft_radix_2<double2, 23, 0, 1, 0>, fft_radix_2<double2, 23, 1, 1, 0>, fft_radix_2<double2, 23, 2, 1, 0>},
+{fft_radix_2<double2, 24, 0, 1, 0>, fft_radix_2<double2, 24, 1, 1, 0>, fft_radix_2<double2, 24, 2, 1, 0>},
+{fft_radix_2<double2, 25, 0, 1, 0>, fft_radix_2<double2, 25, 1, 1, 0>, fft_radix_2<double2, 25, 2, 1, 0>},
+
+};
+};
+
+
+template<> struct TurboFFT_Kernel_Entry<double2, 1, 1>
+{
+void (*turboFFTArr [26][3])(double2 *, double2 *, double2 *, double2 *, int, int) ={
+ {NULL, NULL, NULL},
+{fft_radix_2<double2, 1, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 2, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 3, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 4, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 5, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 6, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 7, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 8, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 9, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 10, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 11, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 12, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 13, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<double2, 14, 0, 1, 1>, fft_radix_2<double2, 14, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 15, 0, 1, 1>, fft_radix_2<double2, 15, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 16, 0, 1, 1>, fft_radix_2<double2, 16, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 17, 0, 1, 1>, fft_radix_2<double2, 17, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 18, 0, 1, 1>, fft_radix_2<double2, 18, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 19, 0, 1, 1>, fft_radix_2<double2, 19, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 20, 0, 1, 1>, fft_radix_2<double2, 20, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 21, 0, 1, 1>, fft_radix_2<double2, 21, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 22, 0, 1, 1>, fft_radix_2<double2, 22, 1, 1, 1>, NULL},
+{fft_radix_2<double2, 23, 0, 1, 1>, fft_radix_2<double2, 23, 1, 1, 1>, fft_radix_2<double2, 23, 2, 1, 1>},
+{fft_radix_2<double2, 24, 0, 1, 1>, fft_radix_2<double2, 24, 1, 1, 1>, fft_radix_2<double2, 24, 2, 1, 1>},
+{fft_radix_2<double2, 25, 0, 1, 1>, fft_radix_2<double2, 25, 1, 1, 1>, fft_radix_2<double2, 25, 2, 1, 1>},
+
 };
 };

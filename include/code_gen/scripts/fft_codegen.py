@@ -74,13 +74,23 @@ class TurboFFT:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
             for i in range(len(self.global_tensor_shape) - 1):
                 file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
-                with open(file_name, 'w') as f:
-                    f.write(self.fft_code[i])
+                if self.ft == 0:
+                    with open(file_name, 'w') as f:
+                        f.write(self.fft_code[i])
+                else:
+                    with open(file_name, 'a') as f:
+                        f.write(self.fft_code[i])
+                
         else:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
             file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{0}.cuh"
-            with open(file_name, 'w') as f:
-                f.write(self.fft_code[1])
+            if self.ft == 0:
+                with open(file_name, 'w') as f:
+                    f.write(self.fft_code[1])
+            else:
+                with open(file_name, 'a') as f:
+                    f.write(self.fft_code[1])
+            
 
     def codegen(self,):
 
@@ -185,7 +195,7 @@ class TurboFFT:
         head = f'''
 #include "../../../TurboFFT_radix_2_template.h"
 template<>
-__global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix))}, {dim}>''' \
+__global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix))}, {dim}, {self.ft}, {self.if_err_injection}>''' \
         + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS, int thread_bs)''' + ''' {
     int bid_cnt = 0;
     '''
@@ -684,8 +694,6 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
 
 if __name__ == '__main__':
     params = []
-    # datatype = 'float2'
-    # datatype = 'double2'
     parser = argparse.ArgumentParser(description="turboFFT.")
     parser.add_argument('--if_ft', type=int, default=0, 
                         help='Flag to indicate feature transformation (0 for False, 1 for True)')
@@ -727,7 +735,6 @@ if __name__ == '__main__':
         global_tensor_shape.reverse()
         WorkerFFTSizes.reverse()
         shared_mem_size = [global_tensor_shape[i] * threadblock_bs[i] for i in range(row[1])]
-        # print(shared_mem_size, threadblock_bs, row[5:(5 + row[1])])
         
         st = row[1]
         if_special = False
@@ -747,7 +754,3 @@ if __name__ == '__main__':
                     err_smoothing=err_smoothing, err_threshold=err_threshold)
         fft.codegen()
         fft.save_generated_code()
-        # main_code = main_codegen()
-        # file_name = "../../../main.cu"
-        # with open(file_name, 'w') as f:
-        #     f.write(main_code)

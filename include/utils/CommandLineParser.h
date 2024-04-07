@@ -11,6 +11,8 @@ public:
     bool if_profile = false;
     bool if_verify = false;
     bool if_bench = true;
+    bool if_ft = false;
+    bool if_err = false;
     int datatype = 0;
     int thread_bs = 1;
     std::string param_file_path = "../include/param/A100/param_float2.csv";
@@ -25,6 +27,8 @@ public:
                   << "  --if_profile <0|1>   Enable (1) or disable (0) profiling.\n"
                   << "  --if_verify <0|1>    Enable (1) or disable (0) verification.\n"
                   << "  --if_bench <0|1>     Enable (1) or disable (0) benchmarking.\n"
+                  << "  --if_ft <0|1>        Enable (1) or disable (0) fault tolerance.\n"
+                  << "  --if_err <0|1>       Enable (1) or disable (0) error injection.\n"
                   << "  --datatype <type>    0 for FP32, 1 for FP64.\n"
                   << "  --thread_bs <value>  Set batches per block to <value>.\n"
                   << "  -h, --help               Display this help message and exit.\n";
@@ -44,6 +48,11 @@ public:
             if_profile = std::atol(value);
         } else if (strcmp(parameterName, "--if_verify") == 0) {
             if_verify = std::atol(value);
+        } else if (strcmp(parameterName, "--if_ft") == 0) {
+            if_ft = std::atol(value);
+        } else if (strcmp(parameterName, "--if_err") == 0) {
+            if_err = std::atol(value);
+            if(if_err != 0) if_ft = 1;
         } else if (strcmp(parameterName, "--if_bench") == 0) {
             if_bench = std::atol(value);
         } else if (strcmp(parameterName, "--datatype") == 0) {
@@ -76,6 +85,7 @@ public:
     void displayConfig() const {
         std::cout << "N: " << N << ", bs: " << bs << ", bs_end: " << bs_end << ", bs_gap: " << bs_gap << std::endl;
         std::cout << "if_profile: " << if_profile << ", if_verify: " << if_verify << ", if_bench: " << if_bench << std::endl;
+        std::cout << "if_ft: " << if_ft << ", if_err: " << if_err << std::endl;
         std::cout << "datatype: " << datatype << ", thread_bs: " << thread_bs << std::endl;
     }
 };

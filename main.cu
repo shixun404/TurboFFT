@@ -1,7 +1,7 @@
 
 #include "include/TurboFFT.h"
     
-template <typename DataType>
+template <typename DataType, int if_ft, int if_err>
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
                     long long int bs, int thread_bs, int ntest){
@@ -15,11 +15,9 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     cudaEvent_t fft_begin, fft_end;
     
     cublasHandle_t handle;      
-
+    TurboFFT_Kernel_Entry<DataType, if_ft, if_err> entry;
     int M = 16;
     dim3 gridDim1((N + 255) / 256, bs / M, 1);
-    
-    TurboFFT_Kernel_Entry<DataType> entry;
     for(int i = 0; i < kernel_launch_times; ++i){
         threadblock_bs = param[5 + i];
         Ni = (1 << param[2 + i]); 
@@ -75,11 +73,8 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)outputs[kernel_launch_times - 1], N * bs * sizeof(DataType), cudaMemcpyDeviceToHost));
 }
 
-
-template <typename DataType>
+template <typename DataType, int if_ft, int if_err>
 void TurboFFT_main(ProgramConfig &config){
-
-
     DataType* input, *output_turbofft, *output_cufft;
     DataType* input_d, *output_d, *twiddle_d;
     int ntest = 10;
@@ -96,17 +91,13 @@ void TurboFFT_main(ProgramConfig &config){
         utils::getDFTMatrixChecksum(dest, i);
         dest += i;
     }
-    // utils::printData<DataType>(checksum_h + 62, 64);
     cudaMemcpy((void*)checksum_d, (void*)checksum_h, sizeof(DataType) * 16384 * 2, cudaMemcpyHostToDevice);
-
-
-    
-    if(config.if_bench){
+    if(!config.if_bench){
         // Verification
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, config.N, config.bs_end);
 
         if(config.if_verify){
-            test_turbofft<DataType>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, 1);
+            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, 1);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, 1);            
             utils::compareData<DataType>(output_turbofft, output_cufft, config.N * config.bs, 1e-4);
         }
@@ -117,7 +108,7 @@ void TurboFFT_main(ProgramConfig &config){
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, ntest);
             
             for(int bs = bs_begin; bs <= config.bs_end; bs += config.bs_gap)
-            test_turbofft<DataType>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, ntest);
+            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, ntest);
         }
     }
     
@@ -130,14 +121,11 @@ void TurboFFT_main(ProgramConfig &config){
             // bs = bs << (28-logN);
             for(int i = 0; i < 29 - logN; i += 1){
                 // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-                test_turbofft<DataType>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest);
+                test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest);
                 bs *= 2;
                 // break; 
             }
         }
-
-   
-
     }
     cudaFree(input_d);
     cudaFree(output_d);
@@ -153,13 +141,16 @@ int main(int argc, char *argv[]){
     
     config.displayConfig();
     // Proceed with the rest of the program
-    
 
     if(config.datatype == 0) {
-        TurboFFT_main<float2>(config);
+        if(config.if_ft == 0) TurboFFT_main<float2, 0, 0>(config);
+        else if(config.if_err == 0) TurboFFT_main<float2, 1, 0>(config);
+        else TurboFFT_main<float2, 1, 1>(config);
     }
     else {
-        TurboFFT_main<double2>(config);
+        if(config.if_ft == 0) TurboFFT_main<double2, 0, 0>(config);
+        else if(config.if_err == 0) TurboFFT_main<double2, 1, 0>(config);
+        else TurboFFT_main<double2, 1, 1>(config);
     }
     
     return 0;
