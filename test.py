@@ -1,22 +1,25 @@
-# import torch as th
-# from math import cos, sin, pi
-# print(th.__version__)
-# N = 64
-# a = th.zeros(N, N, dtype=th.cfloat)
-# for i in range(N):
-#     for j in range(N):
-#         a[i, j] = cos((-2 * pi * i * j) / N) + 1.j * sin((-2 * pi * i * j) / N)
+template_function  = ''
+for i in range(30):
+    for j in range(3):
+        template_function += f"tempate<typename DataType> void __global__ fft_radix_2_logN_{i}_dim_{j}(DataType *, DataType *, DataType *, DataType*, int, int);\n"
 
-# b = th.zeros(1, N, dtype=th.cfloat)
-# for i in range(N):
-#     b[0, i] = cos(-2 * pi * (i % 3) / 3)  + 1.j * sin(-2 * pi * (i % 3) / 3)
+print(template_function)
+func_entry_float = ""
+func_entry_double = ""
+float_bd = [14, 22]
+double_bd = [14, 23]
+for i in range(26):
+    func_0 = f"fft_radix_2_logN<float2, {i}, 0>"
+    func_1 = f"fft_radix_2_logN<float2, {i}, 1>" if i >= float_bd[0] else "NULL"
+    func_2 = f"fft_radix_2_logN<float2, {i}, 2>" if i >= float_bd[1] else "NULL"
+    func_entry_float += "{" + func_0 + ", " +  func_1 + ", " + func_2 + "},\n"
 
-# c = b @ a
-# print(c)
 
-import torch as th
-a = th.rand(10, 64)
-b = a
-b[0,0] += 1
-a_out = th.fft.fft(a)
-b_out = th.fft.fft(b)
+for i in range(26):
+    func_0 = f"fft_radix_2_logN<double2, {i}, 0>"
+    func_1 = f"fft_radix_2_logN<double2, {i}, 1>" if i >= float_bd[0] else "NULL"
+    func_2 = f"fft_radix_2_logN<double2, {i}, 2>" if i >= float_bd[1] else "NULL"
+    func_entry_double += "{" + func_0 + ", " + func_1 + ", " + func_2 + "},\n"
+
+print(func_entry_float)
+print(func_entry_double)

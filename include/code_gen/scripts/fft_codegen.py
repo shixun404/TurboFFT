@@ -21,7 +21,6 @@ class TurboFFT:
         self.err_smoothing = err_smoothing
         self.err_threshold = err_threshold
         self.shared_mem_size=shared_mem_size
-        self.thread_bs = 1
         self.ft = if_ft
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
@@ -131,7 +130,7 @@ class TurboFFT:
                 if(k != -1){
                 '''
                 fft_code += f'''
-                bid = (blockIdx.x / tb_gap) * tb_gap * {self.thread_bs} + blockIdx.x % tb_gap + delta_bid * (k - 1);
+                bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap + delta_bid * (k - 1);
                 // if(threadIdx.x == 0)printf("bid=%d, upload=%d, bx=%d, tx=%d, k = %d\\n", bid, {len(self.fft_code)}, blockIdx.x, threadIdx.x, k);
                 // bid = k;
                 '''
@@ -183,12 +182,15 @@ class TurboFFT:
         if self.if_special:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
             dim = 0
-        head = f'''extern __shared__ {self.data_type} shared[];
-__global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}''' \
-        + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS)''' + ''' {
+        head = f'''
+#include "../../../TurboFFT.h"
+template<>
+__global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix))}, {dim}>''' \
+        + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS, int thread_bs)''' + ''' {
     int bid_cnt = 0;
     '''
         head += f'''
+    extern __shared__ {self.data_type} shared[];
     int threadblock_per_SM = {int(128 * 1024 / (smem_size * 16 if self.data_type == "double2" else smem_size * 8))};
     int tb_gap = threadblock_per_SM * 108;
     int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
@@ -233,8 +235,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         head += f'''
     __syncthreads();
     int bid = 0;
-    for(bid = (blockIdx.x / tb_gap) * tb_gap * {self.thread_bs} + blockIdx.x % tb_gap;
-                bid_cnt < {self.thread_bs} && bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += delta_bid)
+    for(bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap;
+                bid_cnt < thread_bs && bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += delta_bid)
     '''
         head += '''{
     bid_cnt += 1;
@@ -387,7 +389,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             # if self.ft == 1 and self.if_err_injection and not if_output and not if_correction:
             if self.ft == 1 and self.if_err_injection and not if_output and (dim == 0 or self.if_special) and not if_correction:
                 globalAccess_code += f'''
-        {self.rPtr}[0].x += (threadIdx.x == 0 && bid_cnt == (blockIdx.x % {self.thread_bs} + 1)) ? {self.err_inj}: 0;
+        {self.rPtr}[0].x += (threadIdx.x == 0 && bid_cnt == (blockIdx.x % thread_bs + 1)) ? {self.err_inj}: 0;
         '''
 
         for i in range(WorkerFFTSize):
@@ -407,7 +409,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         '''                    
         if self.ft == 1 and if_output and not if_correction:
             globalAccess_code += f'''
-        if(bid_cnt=={self.thread_bs})
+        if(bid_cnt==thread_bs)
         '''
             globalAccess_code += '''
         {
@@ -464,7 +466,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             // if(abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // if(tx == 0)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
             // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            // if((blockIdx.x % {self.thread_bs} + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)) && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} )  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
+            // if((blockIdx.x % thread_bs + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)) && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} )  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
             //                                         bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x, tmp_3.y, tmp_3.y / tmp_1.y);
             // if(abs(tmp_1.y / tmp_1.x) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? bid : k;
@@ -710,7 +712,7 @@ if __name__ == '__main__':
     err_threshold = args.err_threshold
     datatype = args.datatype
     
-    with open(f"../../param/param_A100_{datatype}.csv", 'r') as file:
+    with open(f"../../param/A100/param_{datatype}.csv", 'r') as file:
         for line in file:
             # Splitting each line by comma
             split_elements = line.strip().split(',')
@@ -745,7 +747,7 @@ if __name__ == '__main__':
                     err_smoothing=err_smoothing, err_threshold=err_threshold)
         fft.codegen()
         fft.save_generated_code()
-        main_code = main_codegen(datatype, fft.thread_bs)
-        file_name = "../../../main.cu"
-        with open(file_name, 'w') as f:
-            f.write(main_code)
+        # main_code = main_codegen()
+        # file_name = "../../../main.cu"
+        # with open(file_name, 'w') as f:
+        #     f.write(main_code)
