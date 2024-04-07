@@ -52,6 +52,7 @@
 #include "code_gen/generated/double2/fft_radix_2_logN_29_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_29_upload_2.cuh"
 
+
 template <>
 struct TurboFFT_Kernel_Entry<double2> {
 void (*turboFFTArr[30][3])(double2 *, double2 *, double2 *, double2*, int, int) = {

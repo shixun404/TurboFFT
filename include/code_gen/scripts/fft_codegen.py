@@ -183,14 +183,14 @@ class TurboFFT:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
             dim = 0
         head = f'''
-#include "../../../TurboFFT.h"
+#include "../../../TurboFFT_radix_2_template.h"
 template<>
 __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix))}, {dim}>''' \
         + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS, int thread_bs)''' + ''' {
     int bid_cnt = 0;
     '''
         head += f'''
-    extern __shared__ {self.data_type} shared[];
+    {self.data_type}* shared = ({self.data_type}*) ext_shared;
     int threadblock_per_SM = {int(128 * 1024 / (smem_size * 16 if self.data_type == "double2" else smem_size * 8))};
     int tb_gap = threadblock_per_SM * 108;
     int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;

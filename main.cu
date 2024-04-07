@@ -106,27 +106,27 @@ void TurboFFT_main(ProgramConfig &config){
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, config.N, config.bs_end);
 
         if(config.if_verify){
-            test_turbofft<DataType>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], config.bs, config.thread_bs, 1);
+            test_turbofft<DataType>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, 1);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, 1);            
             utils::compareData<DataType>(output_turbofft, output_cufft, config.N * config.bs, 1e-4);
         }
         // Profiling
-        if(if_profile){
+        if(config.if_profile){
             long long int bs_begin = config.bs;
-            for(bs = bs_begin; bs <= config.bs_end; bs += config.bs_gap)
-            profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+            for(int bs = bs_begin; bs <= config.bs_end; bs += config.bs_gap)
+            profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, ntest);
             
-            for(bs = bs_begin; bs <= config.bs_end; bs += config.bs_gap)
-            test_turbofft<DataType>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], config.bs, config.thread_bs, ntest);
+            for(int bs = bs_begin; bs <= config.bs_end; bs += config.bs_gap)
+            test_turbofft<DataType>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, ntest);
         }
     }
     
-    if(if_bench){
+    if(config.if_bench){
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, 1 << 25, 16 + 3);
-        N = 1;
-        for(logN = 1; logN <= 25; ++logN){
+        long long int N = 1;
+        for(long long int logN = 1; logN <= 25; ++logN){
             N *= 2;
-            bs = 1;
+            long long int bs = 1;
             // bs = bs << (28-logN);
             for(int i = 0; i < 29 - logN; i += 1){
                 // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
@@ -149,9 +149,7 @@ void TurboFFT_main(ProgramConfig &config){
 
 int main(int argc, char *argv[]){
     ProgramConfig config;
-    if (!config.parseCommandLine(argc, argv)) {
-        return 0; // Early exit if help was requested or an error occurred
-    }
+    config.parseCommandLine(argc, argv);
     
     config.displayConfig();
     // Proceed with the rest of the program
