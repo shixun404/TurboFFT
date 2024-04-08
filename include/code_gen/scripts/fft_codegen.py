@@ -199,6 +199,7 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
         + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS, int thread_bs)''' + ''' {
     int bid_cnt = 0;
     '''
+        print((smem_size * 16 if self.data_type == "double2" else smem_size * 8))
         head += f'''
     {self.data_type}* shared = ({self.data_type}*) ext_shared;
     int threadblock_per_SM = {int(128 * 1024 / (smem_size * 16 if self.data_type == "double2" else smem_size * 8))};
@@ -738,6 +739,7 @@ if __name__ == '__main__':
         global_tensor_shape.reverse()
         WorkerFFTSizes.reverse()
         shared_mem_size = [global_tensor_shape[i] * threadblock_bs[i] for i in range(row[1])]
+        
         
         st = row[1]
         if_special = False
