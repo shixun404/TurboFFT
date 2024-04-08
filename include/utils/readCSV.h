@@ -5,7 +5,7 @@ std::vector<long long int> split(const std::string& s, char delimiter) {
     std::string token;
     std::istringstream tokenStream(s);
     while (std::getline(tokenStream, token, delimiter)) {
-        tokens.push_back(std::stoi(token));
+        tokens.push_back(std::stoi(token.c_str()));
     }
     return tokens;
 }

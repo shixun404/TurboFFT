@@ -15,6 +15,8 @@ public:
     bool if_err = false;
     int datatype = 0;
     int thread_bs = 1;
+    int param_1 = 1;
+    int param_2 = 1;
     std::string gpu = "A100";
     std::string param_file_path = "../include/param/A100/param_float2.csv";
 
