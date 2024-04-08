@@ -15,6 +15,7 @@ public:
     bool if_err = false;
     int datatype = 0;
     int thread_bs = 1;
+    std::string gpu = "A100";
     std::string param_file_path = "../include/param/A100/param_float2.csv";
 
     static void displayHelp() {
@@ -34,6 +35,7 @@ public:
                   << "  --if_err <0|1>       Enable (1) or disable (0) error injection.\n"
                   << "  --datatype <type>    0 for FP32, 1 for FP64.\n"
                   << "  --thread_bs <value>  Set batches per block to <value>.\n"
+                  << "  --gpu <str>          Set GPU spec.\n"
                   << "  -h, --help               Display this help message and exit.\n";
     }
     
@@ -63,6 +65,8 @@ public:
             if (datatype == 1) param_file_path = "../include/param/A100/param_double2.csv";
         } else if (strcmp(parameterName, "--thread_bs") == 0) {
             thread_bs = std::atoi(value);
+        } else if (strcmp(parameterName, "--gpu") == 0) {
+            gpu = value;
         } else {
             return false; // 未知的参数名
         }
@@ -83,6 +87,8 @@ public:
                 exit(EXIT_FAILURE);
             }
         }
+        if (datatype == 1) param_file_path = "../include/param/" + gpu + "/param_double2.csv";
+        else param_file_path = "../include/param/" + gpu + "/param_float2.csv";
     }
 
     void displayConfig() const {

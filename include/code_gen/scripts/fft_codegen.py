@@ -707,6 +707,8 @@ if __name__ == '__main__':
                         help='Error threshold')
     parser.add_argument('--datatype', type=str, default="double2", 
                         help='Data type with a default value of "double2"')
+    parser.add_argument('--gpu', type=str, default="A100", 
+                        help='GPU spec a default value of "A100"')
 
 
     # Parse the arguments
@@ -719,8 +721,9 @@ if __name__ == '__main__':
     err_inj = args.err_inj
     err_threshold = args.err_threshold
     datatype = args.datatype
+    gpu = args.gpu
     
-    with open(f"../../param/A100/param_{datatype}.csv", 'r') as file:
+    with open(f"../../param/{gpu}/param_{datatype}.csv", 'r') as file:
         for line in file:
             # Splitting each line by comma
             split_elements = line.strip().split(',')

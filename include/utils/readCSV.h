@@ -10,10 +10,10 @@ std::vector<long long int> split(const std::string& s, char delimiter) {
     return tokens;
 }
 
-std::vector<std::vector<long long int>> load_parameters(
+std::vector<std::vector<long long int> > load_parameters(
     std::string &file_name, bool if_print=false){
     // std::ifstream &file, bool if_print=false){
-    std::vector<std::vector<long long int>> data;
+    std::vector<std::vector<long long int> > data;
     std::ifstream file(file_name);
     
     if (file.is_open()) {
