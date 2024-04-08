@@ -1,13 +1,13 @@
-template_function  = ''
-for i in range(30):
-    for j in range(3):
-        template_function += f"tempate<typename DataType> void __global__ fft_radix_2_logN_{i}_dim_{j}(DataType *, DataType *, DataType *, DataType*, int, int);\n"
 
-print(template_function)
 func_entry_float = ""
 func_entry_double = ""
-float_bd = [13, 23]
-double_bd = [14, 23]
+A100_float_bd = [13, 23]
+A100_double_bd = [14, 23]
+T4_float_bd = [13, 23]
+T4_double_bd = [13, 23]
+
+float_bd =  T4_float_bd
+double_bd =  T4_double_bd
 def helper_include(dtype, if_ft, if_err_inj, bd):
     func_entry = f'''
 template<> struct TurboFFT_Kernel_Entry<{dtype}, {if_ft}, {if_err_inj}>

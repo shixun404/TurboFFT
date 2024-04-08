@@ -220,7 +220,7 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
                 head += f'''{key} = {self.local_variable[key][1]};
     '''
         if self.ft == 1:
-            for i in range(max(1, global_tensor_shape[dim_] / (global_tensor_shape[dim_] / WorkerFFTSize * threadblock_bs))):
+            for i in range(max(1, global_tensor_shape[dim_] // (global_tensor_shape[dim_] // WorkerFFTSize * threadblock_bs))):
                 head += f'''
     {self.rPtr_2}[{i}] = *(checksum_DFT + {global_tensor_shape[dim_]} - 2 + tx + {i * num_thread});
     {self.shPtr}[tx + {i * num_thread}] = {self.rPtr_2}[{i}];

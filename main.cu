@@ -79,7 +79,7 @@ void TurboFFT_main(ProgramConfig &config){
     DataType* input_d, *output_d, *twiddle_d;
     int ntest = 10;
 
-    std::vector<std::vector<long long int>> params;
+    std::vector<std::vector<long long int> > params;
     
     params = utils::load_parameters(config.param_file_path);
 

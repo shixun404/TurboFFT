@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
 project(turbofft LANGUAGES CXX CUDA)
 
 # Set CUDA architecture
-set(CMAKE_CUDA_ARCHITECTURES 80)
+set(CMAKE_CUDA_ARCHITECTURES 75 80)
 
 # Add -O3 optimization flag for CUDA
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 -lineinfo")
