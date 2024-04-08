@@ -1,4 +1,4 @@
-build/*
+build*
 .vscode/*
 *.sh
 **/__pycache__/
