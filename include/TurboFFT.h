@@ -27,7 +27,7 @@ void (*turboFFTArr[26][3])(DataType *, DataType *, DataType *, DataType*, int, i
 template <typename DataType, int if_ft, int if_err>
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
-                    long long int bs, int ntest);
+                    long long int bs, int ntest, ProgramConfig &config);
 
 
 
