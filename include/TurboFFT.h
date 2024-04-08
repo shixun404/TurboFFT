@@ -102,7 +102,6 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
 #include "code_gen/generated/double2/fft_radix_2_logN_20_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_21_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_21_upload_1.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_21_upload_2.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_22_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_22_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_23_upload_0.cuh"
@@ -114,18 +113,6 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_0.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_2.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_26_upload_0.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_26_upload_1.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_26_upload_2.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_27_upload_0.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_27_upload_1.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_27_upload_2.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_28_upload_0.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_28_upload_1.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_28_upload_2.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_29_upload_0.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_29_upload_1.cuh"
-#include "code_gen/generated/double2/fft_radix_2_logN_29_upload_2.cuh"
 template<> struct TurboFFT_Kernel_Entry<float2, 0, 0>
 {
 void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
