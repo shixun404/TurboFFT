@@ -44,6 +44,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
 #include "code_gen/generated/float2/fft_radix_2_logN_11_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_12_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_13_upload_0.cuh"
+#include "code_gen/generated/float2/fft_radix_2_logN_13_upload_1.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_14_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_14_upload_1.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_15_upload_0.cuh"
@@ -141,7 +142,7 @@ void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
 {fft_radix_2<float2, 10, 0, 0, 0>, NULL, NULL},
 {fft_radix_2<float2, 11, 0, 0, 0>, NULL, NULL},
 {fft_radix_2<float2, 12, 0, 0, 0>, NULL, NULL},
-{fft_radix_2<float2, 13, 0, 0, 0>, NULL, NULL},
+{fft_radix_2<float2, 13, 0, 0, 0>, fft_radix_2<float2, 13, 1, 0, 0>, NULL},
 {fft_radix_2<float2, 14, 0, 0, 0>, fft_radix_2<float2, 14, 1, 0, 0>, NULL},
 {fft_radix_2<float2, 15, 0, 0, 0>, fft_radix_2<float2, 15, 1, 0, 0>, NULL},
 {fft_radix_2<float2, 16, 0, 0, 0>, fft_radix_2<float2, 16, 1, 0, 0>, NULL},
@@ -175,7 +176,7 @@ void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
 {fft_radix_2<float2, 10, 0, 1, 0>, NULL, NULL},
 {fft_radix_2<float2, 11, 0, 1, 0>, NULL, NULL},
 {fft_radix_2<float2, 12, 0, 1, 0>, NULL, NULL},
-{fft_radix_2<float2, 13, 0, 1, 0>, NULL, NULL},
+{fft_radix_2<float2, 13, 0, 1, 0>, fft_radix_2<float2, 13, 1, 1, 0>, NULL},
 {fft_radix_2<float2, 14, 0, 1, 0>, fft_radix_2<float2, 14, 1, 1, 0>, NULL},
 {fft_radix_2<float2, 15, 0, 1, 0>, fft_radix_2<float2, 15, 1, 1, 0>, NULL},
 {fft_radix_2<float2, 16, 0, 1, 0>, fft_radix_2<float2, 16, 1, 1, 0>, NULL},
@@ -209,7 +210,7 @@ void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
 {fft_radix_2<float2, 10, 0, 1, 1>, NULL, NULL},
 {fft_radix_2<float2, 11, 0, 1, 1>, NULL, NULL},
 {fft_radix_2<float2, 12, 0, 1, 1>, NULL, NULL},
-{fft_radix_2<float2, 13, 0, 1, 1>, NULL, NULL},
+{fft_radix_2<float2, 13, 0, 1, 1>, fft_radix_2<float2, 13, 1, 1, 1>, NULL},
 {fft_radix_2<float2, 14, 0, 1, 1>, fft_radix_2<float2, 14, 1, 1, 1>, NULL},
 {fft_radix_2<float2, 15, 0, 1, 1>, fft_radix_2<float2, 15, 1, 1, 1>, NULL},
 {fft_radix_2<float2, 16, 0, 1, 1>, fft_radix_2<float2, 16, 1, 1, 1>, NULL},

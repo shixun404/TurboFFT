@@ -10,7 +10,7 @@ public:
     long long bs_gap = 1;
     bool if_profile = false;
     bool if_verify = false;
-    bool if_bench = true;
+    int if_bench = true;
     bool if_ft = false;
     bool if_err = false;
     int datatype = 0;
@@ -26,7 +26,10 @@ public:
                   << "  --bs_gap <value>     Set block size gap to <value> (for iterative tests).\n"
                   << "  --if_profile <0|1>   Enable (1) or disable (0) profiling.\n"
                   << "  --if_verify <0|1>    Enable (1) or disable (0) verification.\n"
-                  << "  --if_bench <0|1>     Enable (1) or disable (0) benchmarking.\n"
+                  << "  --if_bench <0|1|2|11|12> Enable (1) or disable (0) benchmarking.\n"
+                  << "                           (2) for logBS + logN = 28.\n"
+                  << "                           (11) for cuFFT.\n"
+                  << "                           (12) for cuFFT &  logBS + logN = 28.\n"
                   << "  --if_ft <0|1>        Enable (1) or disable (0) fault tolerance.\n"
                   << "  --if_err <0|1>       Enable (1) or disable (0) error injection.\n"
                   << "  --datatype <type>    0 for FP32, 1 for FP64.\n"

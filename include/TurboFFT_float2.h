@@ -11,6 +11,7 @@
 #include "code_gen/generated/float2/fft_radix_2_logN_11_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_12_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_13_upload_0.cuh"
+#include "code_gen/generated/float2/fft_radix_2_logN_13_upload_1.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_14_upload_0.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_14_upload_1.cuh"
 #include "code_gen/generated/float2/fft_radix_2_logN_15_upload_0.cuh"

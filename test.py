@@ -6,7 +6,7 @@ for i in range(30):
 print(template_function)
 func_entry_float = ""
 func_entry_double = ""
-float_bd = [14, 23]
+float_bd = [13, 23]
 double_bd = [14, 23]
 def helper_include(dtype, if_ft, if_err_inj, bd):
     func_entry = f'''

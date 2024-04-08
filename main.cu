@@ -118,12 +118,12 @@ void TurboFFT_main(ProgramConfig &config){
         for(long long int logN = 1; logN <= 25; ++logN){
             N *= 2;
             long long int bs = 1;
-            // bs = bs << (28-logN);
+            if(config.if_bench % 10 == 2) bs = bs << (28-logN);
             for(int i = 0; i < 29 - logN; i += 1){
-                // profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-                test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest);
+                if(config.if_bench > 10) profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
+                else test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest);
                 bs *= 2;
-                // break; 
+                if(config.if_bench % 10 == 2) break; 
             }
         }
     }
