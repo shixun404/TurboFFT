@@ -89,6 +89,13 @@ public:
         }
         if (datatype == 1) param_file_path = "../include/param/" + gpu + "/param_double2.csv";
         else param_file_path = "../include/param/" + gpu + "/param_float2.csv";
+        if (gpu == "T4"){
+            param_1 = 26;
+            param_2 = 4;
+        } else{
+            param_1 = 28;
+            param_2 = 16;
+        }
     }
 
     void displayConfig() const {

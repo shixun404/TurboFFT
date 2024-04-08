@@ -113,13 +113,13 @@ void TurboFFT_main(ProgramConfig &config){
     }
     
     if(config.if_bench){
-        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, 1 << 25, 16 + 3);
+        utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, 1 << 25, config.param_2 + 3);
         long long int N = 1;
         for(long long int logN = 1; logN <= 25; ++logN){
             N *= 2;
             long long int bs = 1;
-            if(config.if_bench % 10 == 2) bs = bs << (28-logN);
-            for(int i = 0; i < 29 - logN; i += 1){
+            if(config.if_bench % 10 == 2) bs = bs << config.param_1;
+            for(int i = 0; i <= config.param_1; i += 1){
                 if(config.if_bench > 10) profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 else test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest);
                 bs *= 2;
