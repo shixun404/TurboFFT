@@ -4,7 +4,7 @@
 template <typename DataType, int if_ft, int if_err>
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
-                    long long int bs, int thread_bs, int ntest){
+                    long long int bs, int thread_bs, int ntest, ProgramConfig &config){
     long long int N = (1 << param[0]), threadblock_bs, Ni, WorkerFFTSize;
     long long int logN = param[0];
     long long int shared_size[3], griddims[3], blockdims[3]; 
@@ -25,9 +25,8 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
         
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
-        long long int shared_per_SM = 160 * 1024;
-        shared_per_SM = 128 * 1024;
-        griddims[i] = min(108 * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
+        long long int shared_per_SM = config.smem_size * 1024;
+        griddims[i] = min(config.sm_cnt * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
                 ((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs));
         
         griddims[i] = ((((N * bs) + (Ni * threadblock_bs) - 1) / (Ni * threadblock_bs))) / thread_bs;
@@ -97,7 +96,7 @@ void TurboFFT_main(ProgramConfig &config){
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, config.N, config.bs_end);
 
         if(config.if_verify){
-            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, 1);
+            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, 1, config);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, 1);            
             utils::compareData<DataType>(output_turbofft, output_cufft, config.N * config.bs, 1e-4);
         }
@@ -108,7 +107,7 @@ void TurboFFT_main(ProgramConfig &config){
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, ntest);
             
             for(int bs = bs_begin; bs <= config.bs_end; bs += config.bs_gap)
-            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, ntest);
+            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, ntest, config);
         }
     }
     
@@ -121,7 +120,7 @@ void TurboFFT_main(ProgramConfig &config){
             if(config.if_bench % 10 == 2) bs = bs << config.param_1;
             for(int i = 0; i <= config.param_1; i += 1){
                 if(config.if_bench > 10) profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-                else test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest);
+                else test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest, config);
                 bs *= 2;
                 if(config.if_bench % 10 == 2) break; 
             }

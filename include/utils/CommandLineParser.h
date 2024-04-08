@@ -17,6 +17,8 @@ public:
     int thread_bs = 1;
     int param_1 = 1;
     int param_2 = 1;
+    int smem_size = 1;
+    int sm_cnt = 1;
     std::string gpu = "A100";
     std::string param_file_path = "../include/param/A100/param_float2.csv";
 
@@ -94,9 +96,13 @@ public:
         if (gpu == "T4"){
             param_1 = 26;
             param_2 = 4;
+            smem_size = 64;
+            sm_cnt = 40;
         } else{
             param_1 = 28;
             param_2 = 16;
+            smem_size = 128;
+            sm_cnt = 108;
         }
     }
 
@@ -105,5 +111,7 @@ public:
         std::cout << "if_profile: " << if_profile << ", if_verify: " << if_verify << ", if_bench: " << if_bench << std::endl;
         std::cout << "if_ft: " << if_ft << ", if_err: " << if_err << std::endl;
         std::cout << "datatype: " << datatype << ", thread_bs: " << thread_bs << std::endl;
+        std::cout << "gpu: " << gpu << ", param_1: " << param_1 << ", param_2: " << param_2 << std::endl;
+        std::cout << "sm_cnt: " << sm_cnt << "smem_size: " << smem_size << "param_file_path: " << param_file_path << std::endl;
     }
 };
