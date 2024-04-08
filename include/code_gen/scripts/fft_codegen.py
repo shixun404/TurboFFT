@@ -72,26 +72,36 @@ class TurboFFT:
     def save_generated_code(self, ):
         if not self.if_special:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
-            for i in range(len(self.global_tensor_shape) - 1):
+            for i in range(3):
                 file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
-                with open(file_name, 'a') as f:
-                    f.write("\n")
-                if self.ft == 0:
+                if i >= len(self.global_tensor_shape) - 1:
                     with open(file_name, 'w') as f:
-                        f.write(self.fft_code[i])
+                        f.write("\n")
                 else:
-                    with open(file_name, 'a') as f:
-                        f.write(self.fft_code[i])
+                    if self.ft == 0:
+                        with open(file_name, 'w') as f:
+                            f.write(self.fft_code[i])
+                    else:
+                        with open(file_name, 'a') as f:
+                            f.write(self.fft_code[i])
                 
         else:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
-            file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{0}.cuh"
-            if self.ft == 0:
-                with open(file_name, 'w') as f:
-                    f.write(self.fft_code[1])
-            else:
-                with open(file_name, 'a') as f:
-                    f.write(self.fft_code[1])
+            for i in range(3):
+                if i != 0:
+                    file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
+                    with open(file_name, 'w') as f:
+                        f.write("\n")
+                else:
+                    file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{0}.cuh"
+                    if self.ft == 0:
+                        with open(file_name, 'w') as f:
+                            f.write(self.fft_code[1])
+                    else:
+                        with open(file_name, 'a') as f:
+                            f.write(self.fft_code[1])
+            
+            
             
 
     def codegen(self,):

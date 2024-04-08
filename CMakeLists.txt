@@ -17,6 +17,7 @@ include_directories("~/cuda-samples/Common/")
 
 # Specify the executable and its source files
 add_executable(turbofft main.cu)
+target_compile_definitions(turbofft PRIVATE ARCH_SM=80)
 
 # Link the CUDA libraries
 # set(CUDA_TOOLKIT_ROOT_DIR "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0")

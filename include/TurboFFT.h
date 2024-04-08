@@ -115,7 +115,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_1.cuh"
 #include "code_gen/generated/double2/fft_radix_2_logN_25_upload_2.cuh"
 
-
+#if ARCH_SM == 75
 template<> struct TurboFFT_Kernel_Entry<float2, 0, 0, 75>
 {
 void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
@@ -319,7 +319,7 @@ void (*turboFFTArr [26][3])(double2 *, double2 *, double2 *, double2 *, int, int
 };
 };
 
-
+#elif ARCH_SM == 80
 template<> struct TurboFFT_Kernel_Entry<float2, 0, 0, 80>
 {
 void (*turboFFTArr [26][3])(float2 *, float2 *, float2 *, float2 *, int, int) ={
@@ -523,3 +523,4 @@ void (*turboFFTArr [26][3])(double2 *, double2 *, double2 *, double2 *, int, int
 };
 };
 
+#endif
