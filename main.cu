@@ -1,7 +1,7 @@
 
 #include "include/TurboFFT.h"
     
-template <typename DataType, int if_ft, int if_err>
+template <typename DataType, int if_ft, int if_err, int gpu_spec>
 void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turbofft,
                     DataType* twiddle_d, DataType* checksum, std::vector<long long int> param, 
                     long long int bs, int thread_bs, int ntest, ProgramConfig &config){
@@ -15,7 +15,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     cudaEvent_t fft_begin, fft_end;
     
     cublasHandle_t handle;      
-    TurboFFT_Kernel_Entry<DataType, if_ft, if_err> entry;
+    TurboFFT_Kernel_Entry<DataType, if_ft, if_err, gpu_spec> entry;
     int M = 16;
     dim3 gridDim1((N + 255) / 256, bs / M, 1);
     for(int i = 0; i < kernel_launch_times; ++i){
@@ -34,7 +34,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
         cudaFuncAttributes attr;
         if(cudaFuncSetAttribute(entry.turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]))
         printf("Set DynamicSharedMem failed\n");
-        if(cudaFuncSetAttribute(entry.turboFFTArr[logN][i], cudaFuncAttributePreferredSharedMemoryCarveout, (shared_per_SM * 100) / (164 * 1024)))
+        if(cudaFuncSetAttribute(entry.turboFFTArr[logN][i], cudaFuncAttributePreferredSharedMemoryCarveout, (shared_per_SM * 100) / (config.smem_capacity * 1024)))
         printf("Set smemCarveout failed\n");
         cudaError_t get_attr_res = cudaFuncGetAttributes (&attr, entry.turboFFTArr[logN][i] );
         if(get_attr_res != 0)
@@ -72,7 +72,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)outputs[kernel_launch_times - 1], N * bs * sizeof(DataType), cudaMemcpyDeviceToHost));
 }
 
-template <typename DataType, int if_ft, int if_err>
+template <typename DataType, int if_ft, int if_err, int gpu_spec>
 void TurboFFT_main(ProgramConfig &config){
     DataType* input, *output_turbofft, *output_cufft;
     DataType* input_d, *output_d, *twiddle_d;
@@ -96,7 +96,7 @@ void TurboFFT_main(ProgramConfig &config){
         utils::initializeData<DataType>(input, input_d, output_d, output_turbofft, output_cufft, twiddle_d, config.N, config.bs_end);
 
         if(config.if_verify){
-            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, 1, config);
+            test_turbofft<DataType, if_ft, if_err, gpu_spec>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, 1, config);
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, 1);            
             utils::compareData<DataType>(output_turbofft, output_cufft, config.N * config.bs, 1e-4);
         }
@@ -107,7 +107,7 @@ void TurboFFT_main(ProgramConfig &config){
             profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, config.N, config.bs, ntest);
             
             for(int bs = bs_begin; bs <= config.bs_end; bs += config.bs_gap)
-            test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, ntest, config);
+            test_turbofft<DataType, if_ft, if_err, gpu_spec>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[config.logN], config.bs, config.thread_bs, ntest, config);
         }
     }
     
@@ -120,7 +120,7 @@ void TurboFFT_main(ProgramConfig &config){
             if(config.if_bench % 10 == 2) bs = bs << (config.param_1 - logN);
             for(int i = 0; i <= config.param_1; i += 1){
                 if(config.if_bench > 10) profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
-                else test_turbofft<DataType, if_ft, if_err>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest, config);
+                else test_turbofft<DataType, if_ft, if_err, gpu_spec>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest, config);
                 bs *= 2;
                 if(config.if_bench % 10 == 2) break; 
             }
@@ -140,16 +140,29 @@ int main(int argc, char *argv[]){
     
     config.displayConfig();
     // Proceed with the rest of the program
+    if(config.gpu == "T4"){
+        if(config.datatype == 0) {
+            if(config.if_ft == 0) TurboFFT_main<float2, 0, 0, 75>(config);
+            else if(config.if_err == 0) TurboFFT_main<float2, 1, 0, 75>(config);
+            else TurboFFT_main<float2, 1, 1, 75>(config);
+        }
+        else {
+            if(config.if_ft == 0) TurboFFT_main<double2, 0, 0, 75>(config);
+            else if(config.if_err == 0) TurboFFT_main<double2, 1, 0, 75>(config);
+            else TurboFFT_main<double2, 1, 1, 75>(config);
+        }
+    } else {
+        if(config.datatype == 0) {
+            if(config.if_ft == 0) TurboFFT_main<float2, 0, 0, 80>(config);
+            else if(config.if_err == 0) TurboFFT_main<float2, 1, 0, 80>(config);
+            else TurboFFT_main<float2, 1, 1, 80>(config);
+        }
+        else {
+            if(config.if_ft == 0) TurboFFT_main<double2, 0, 0, 80>(config);
+            else if(config.if_err == 0) TurboFFT_main<double2, 1, 0, 80>(config);
+            else TurboFFT_main<double2, 1, 1, 80>(config);
+        }
 
-    if(config.datatype == 0) {
-        if(config.if_ft == 0) TurboFFT_main<float2, 0, 0>(config);
-        else if(config.if_err == 0) TurboFFT_main<float2, 1, 0>(config);
-        else TurboFFT_main<float2, 1, 1>(config);
-    }
-    else {
-        if(config.if_ft == 0) TurboFFT_main<double2, 0, 0>(config);
-        else if(config.if_err == 0) TurboFFT_main<double2, 1, 0>(config);
-        else TurboFFT_main<double2, 1, 1>(config);
     }
     
     return 0;

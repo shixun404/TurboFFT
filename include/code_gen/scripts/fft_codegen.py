@@ -74,6 +74,8 @@ class TurboFFT:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
             for i in range(len(self.global_tensor_shape) - 1):
                 file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
+                with open(file_name, 'a') as f:
+                    f.write("\n")
                 if self.ft == 0:
                     with open(file_name, 'w') as f:
                         f.write(self.fft_code[i])

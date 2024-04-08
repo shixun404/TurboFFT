@@ -19,6 +19,7 @@ public:
     int param_2 = 1;
     int smem_size = 1;
     int sm_cnt = 1;
+    int smem_capacity = 164;
     std::string gpu = "A100";
     std::string param_file_path = "../include/param/A100/param_float2.csv";
 
@@ -96,13 +97,15 @@ public:
         if (gpu == "T4"){
             param_1 = 26;
             param_2 = 4;
-            smem_size = 64;
-            sm_cnt = 40;
+            smem_size = 128;
+            sm_cnt = 108;
+            smem_capacity = 164;
         } else{
             param_1 = 28;
             param_2 = 16;
             smem_size = 128;
             sm_cnt = 108;
+            smem_capacity = 164;
         }
     }
 
