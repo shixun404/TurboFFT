@@ -3,13 +3,27 @@
 ## Run the following command to generate FFT kernel and compile
 ```
 mkdir build
-cd build
-cmake ..
-cd ..
 ./compile.sh
 ```
-## Run the following command to profile/verify/benchmark
-turboFFT takes in 5 arguments, which are `logN`, `batch_size`, `if_profile`, `if_verify`, and `if_bench`.
+## TurboFFT
+Usage: program [options]
+Options:
+  --logN <value>       Set logN to <value>, which determines N as 2^<value>.
+  --bs <value>         Set block size to <value>.
+  --bs_end <value>     Set block size end to <value> (for iterative tests).
+  --bs_gap <value>     Set block size gap to <value> (for iterative tests).
+  --if_profile <0|1>   Enable (1) or disable (0) profiling.
+  --if_verify <0|1>    Enable (1) or disable (0) verification.
+  --if_bench <0|1|2|11|12> Enable (1) or disable (0) benchmarking.
+                           (2) for logBS + logN = 28.
+                           (11) for cuFFT.
+                           (12) for cuFFT &  logBS + logN = 28.
+  --if_ft <0|1>        Enable (1) or disable (0) fault tolerance.
+  --if_err <0|1>       Enable (1) or disable (0) error injection.
+  --datatype <type>    0 for FP32, 1 for FP64.
+  --thread_bs <value>  Set batches per block to <value>.
+  --gpu <str>          Set GPU spec.
+  -h, --help               Display this help message and exit.
 
 ### Profile a $16 \times 2^{10}$ FFT computation
 ```
