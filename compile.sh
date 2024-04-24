@@ -1,4 +1,4 @@
-gpu=$1
+gpu=A100
 cd include/code_gen/scripts
 python fft_codegen.py --gpu $gpu --datatype float2
 python fft_codegen.py --gpu $gpu --datatype float2  --if_ft 1
