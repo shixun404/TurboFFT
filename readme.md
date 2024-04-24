@@ -6,6 +6,7 @@ mkdir build
 ./compile.sh
 ```
 ## TurboFFT
+```
 Usage: program [options]
 Options:
   --logN <value>       Set logN to <value>, which determines N as 2^<value>.
@@ -24,6 +25,7 @@ Options:
   --thread_bs <value>  Set batches per block to <value>.
   --gpu <str>          Set GPU spec.
   -h, --help               Display this help message and exit.
+```
 
 ### Profile a $16 \times 2^{10}$ FFT computation
 ```
