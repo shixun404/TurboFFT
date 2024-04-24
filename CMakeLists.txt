@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
 project(turbofft LANGUAGES CXX CUDA)
 
 # Set CUDA architecture
-set(CMAKE_CUDA_ARCHITECTURES 80)
+set(CMAKE_CUDA_ARCHITECTURES 75 80)
 
 # Add -O3 optimization flag for CUDA
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 -lineinfo")
@@ -17,6 +17,7 @@ include_directories("~/cuda-samples/Common/")
 
 # Specify the executable and its source files
 add_executable(turbofft main.cu)
+target_compile_definitions(turbofft PRIVATE ARCH_SM=80)
 
 # Link the CUDA libraries
 # set(CUDA_TOOLKIT_ROOT_DIR "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0")

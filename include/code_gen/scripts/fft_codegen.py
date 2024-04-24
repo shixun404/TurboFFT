@@ -21,7 +21,6 @@ class TurboFFT:
         self.err_smoothing = err_smoothing
         self.err_threshold = err_threshold
         self.shared_mem_size=shared_mem_size
-        self.thread_bs = 1
         self.ft = if_ft
         self.WorkerFFTSizes = WorkerFFTSizes
         self.threadblock_bs = threadblock_bs
@@ -73,15 +72,37 @@ class TurboFFT:
     def save_generated_code(self, ):
         if not self.if_special:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
-            for i in range(len(self.global_tensor_shape) - 1):
+            for i in range(3):
                 file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
-                with open(file_name, 'w') as f:
-                    f.write(self.fft_code[i])
+                if i >= len(self.global_tensor_shape) - 1:
+                    with open(file_name, 'w') as f:
+                        f.write("\n")
+                else:
+                    if self.ft == 0:
+                        with open(file_name, 'w') as f:
+                            f.write(self.fft_code[i])
+                    else:
+                        with open(file_name, 'a') as f:
+                            f.write(self.fft_code[i])
+                
         else:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
-            file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{0}.cuh"
-            with open(file_name, 'w') as f:
-                f.write(self.fft_code[1])
+            for i in range(3):
+                if i != 0:
+                    file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
+                    with open(file_name, 'w') as f:
+                        f.write("\n")
+                else:
+                    file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{0}.cuh"
+                    if self.ft == 0:
+                        with open(file_name, 'w') as f:
+                            f.write(self.fft_code[1])
+                    else:
+                        with open(file_name, 'a') as f:
+                            f.write(self.fft_code[1])
+            
+            
+            
 
     def codegen(self,):
 
@@ -131,7 +152,7 @@ class TurboFFT:
                 if(k != -1){
                 '''
                 fft_code += f'''
-                bid = (blockIdx.x / tb_gap) * tb_gap * {self.thread_bs} + blockIdx.x % tb_gap + delta_bid * (k - 1);
+                bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap + delta_bid * (k - 1);
                 // if(threadIdx.x == 0)printf("bid=%d, upload=%d, bx=%d, tx=%d, k = %d\\n", bid, {len(self.fft_code)}, blockIdx.x, threadIdx.x, k);
                 // bid = k;
                 '''
@@ -177,18 +198,21 @@ class TurboFFT:
     def head(self,  dim, global_tensor_shape, threadblock_bs, WorkerFFTSize, dim_, smem_size):
         N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
         global_tensor_shape = th.as_tensor(global_tensor_shape)
-        num_thread = (global_tensor_shape[dim_] / WorkerFFTSize * threadblock_bs)
+        num_thread = (global_tensor_shape[dim_] // WorkerFFTSize * threadblock_bs)
         Ni = self.global_tensor_shape[len(self.global_tensor_shape) - 2 -dim]
         threadblock_bs = self.threadblock_bs[len(self.global_tensor_shape) - 2 -dim]
         if self.if_special:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
             dim = 0
-        head = f'''extern __shared__ {self.data_type} shared[];
-__global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}''' \
-        + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS)''' + ''' {
+        head = f'''
+#include "../../../TurboFFT_radix_2_template.h"
+template<>
+__global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix))}, {dim}, {self.ft}, {self.if_err_injection}>''' \
+        + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS, int thread_bs)''' + ''' {
     int bid_cnt = 0;
     '''
         head += f'''
+    {self.data_type}* shared = ({self.data_type}*) ext_shared;
     int threadblock_per_SM = {int(128 * 1024 / (smem_size * 16 if self.data_type == "double2" else smem_size * 8))};
     int tb_gap = threadblock_per_SM * 108;
     int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
@@ -208,7 +232,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
                 head += f'''{key} = {self.local_variable[key][1]};
     '''
         if self.ft == 1:
-            for i in range(max(1, global_tensor_shape[dim_] / (global_tensor_shape[dim_] / WorkerFFTSize * threadblock_bs))):
+            for i in range(max(1, global_tensor_shape[dim_] // (global_tensor_shape[dim_] // WorkerFFTSize * threadblock_bs))):
                 head += f'''
     {self.rPtr_2}[{i}] = *(checksum_DFT + {global_tensor_shape[dim_]} - 2 + tx + {i * num_thread});
     {self.shPtr}[tx + {i * num_thread}] = {self.rPtr_2}[{i}];
@@ -233,8 +257,8 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         head += f'''
     __syncthreads();
     int bid = 0;
-    for(bid = (blockIdx.x / tb_gap) * tb_gap * {self.thread_bs} + blockIdx.x % tb_gap;
-                bid_cnt < {self.thread_bs} && bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += delta_bid)
+    for(bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap;
+                bid_cnt < thread_bs && bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += delta_bid)
     '''
         head += '''{
     bid_cnt += 1;
@@ -257,7 +281,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         threadblock_tensor_shape[threadblock_bs_dim] = threadblock_bs
 
         T = int(global_tensor_shape[dim] / WorkerFFTSize)
-        num_thread = (global_tensor_shape[dim] / WorkerFFTSize * threadblock_bs)
+        num_thread = (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs)
         globalAccess_code = f'''        
     bx = bid;
     tx = threadIdx.x;
@@ -387,7 +411,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             # if self.ft == 1 and self.if_err_injection and not if_output and not if_correction:
             if self.ft == 1 and self.if_err_injection and not if_output and (dim == 0 or self.if_special) and not if_correction:
                 globalAccess_code += f'''
-        {self.rPtr}[0].x += (threadIdx.x == 0 && bid_cnt == (blockIdx.x % {self.thread_bs} + 1)) ? {self.err_inj}: 0;
+        {self.rPtr}[0].x += (threadIdx.x == 0 && bid_cnt == (blockIdx.x % thread_bs + 1)) ? {self.err_inj}: 0;
         '''
 
         for i in range(WorkerFFTSize):
@@ -407,7 +431,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
         '''                    
         if self.ft == 1 and if_output and not if_correction:
             globalAccess_code += f'''
-        if(bid_cnt=={self.thread_bs})
+        if(bid_cnt==thread_bs)
         '''
             globalAccess_code += '''
         {
@@ -464,7 +488,7 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
             // if(abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // if(tx == 0)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
             // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            // if((blockIdx.x % {self.thread_bs} + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)) && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} )  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
+            // if((blockIdx.x % thread_bs + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)) && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} )  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
             //                                         bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x, tmp_3.y, tmp_3.y / tmp_1.y);
             // if(abs(tmp_1.y / tmp_1.x) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? bid : k;
@@ -682,8 +706,6 @@ __global__ void fft_radix_{self.radix}_logN_{int(log(N, self.radix))}_dim_{dim}'
 
 if __name__ == '__main__':
     params = []
-    # datatype = 'float2'
-    # datatype = 'double2'
     parser = argparse.ArgumentParser(description="turboFFT.")
     parser.add_argument('--if_ft', type=int, default=0, 
                         help='Flag to indicate feature transformation (0 for False, 1 for True)')
@@ -697,6 +719,8 @@ if __name__ == '__main__':
                         help='Error threshold')
     parser.add_argument('--datatype', type=str, default="double2", 
                         help='Data type with a default value of "double2"')
+    parser.add_argument('--gpu', type=str, default="A100", 
+                        help='GPU spec a default value of "A100"')
 
 
     # Parse the arguments
@@ -709,8 +733,9 @@ if __name__ == '__main__':
     err_inj = args.err_inj
     err_threshold = args.err_threshold
     datatype = args.datatype
+    gpu = args.gpu
     
-    with open(f"../../param/param_A100_{datatype}.csv", 'r') as file:
+    with open(f"../../param/{gpu}/param_{datatype}.csv", 'r') as file:
         for line in file:
             # Splitting each line by comma
             split_elements = line.strip().split(',')
@@ -725,7 +750,7 @@ if __name__ == '__main__':
         global_tensor_shape.reverse()
         WorkerFFTSizes.reverse()
         shared_mem_size = [global_tensor_shape[i] * threadblock_bs[i] for i in range(row[1])]
-        # print(shared_mem_size, threadblock_bs, row[5:(5 + row[1])])
+        
         
         st = row[1]
         if_special = False
@@ -745,7 +770,3 @@ if __name__ == '__main__':
                     err_smoothing=err_smoothing, err_threshold=err_threshold)
         fft.codegen()
         fft.save_generated_code()
-        main_code = main_codegen(datatype, fft.thread_bs)
-        file_name = "../../../main.cu"
-        with open(file_name, 'w') as f:
-            f.write(main_code)
