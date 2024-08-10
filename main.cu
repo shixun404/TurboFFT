@@ -118,7 +118,7 @@ void TurboFFT_main(ProgramConfig &config){
             N *= 2;
             long long int bs = 1;
             if(config.if_bench % 10 == 2) bs = bs << (config.param_1 - logN);
-            for(int i = 0; i <= config.param_1; i += 1){
+            for(int i = 0; i <= config.param_1 - logN; i += 1){
                 if(config.if_bench > 10) profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 else test_turbofft<DataType, if_ft, if_err, gpu_spec>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest, config);
                 bs *= 2;
