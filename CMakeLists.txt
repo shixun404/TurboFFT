@@ -20,9 +20,10 @@ add_executable(turbofft main.cu)
 target_compile_definitions(turbofft PRIVATE ARCH_SM=80)
 
 # Link the CUDA libraries
-# set(CUDA_TOOLKIT_ROOT_DIR "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0")
-# # set(CUDA_INCLUDE_DIRS "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/include")
+# set(CUDATOOLKIT_ROOT_DIR "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0")
+# set(CUDA_INCLUDE_DIRS "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/include")
 # set(CUDA_CUDART_LIBRARY "/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/lib64")
+find_package(CUDA REQUIRED)
 find_package(CUDAToolkit)
 target_link_libraries(turbofft CUDA::cudart)
 target_link_libraries(turbofft CUDA::cufft)
