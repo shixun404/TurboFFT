@@ -5,7 +5,7 @@ __global__ void fft_radix_2<float2, 2, 0, 0, 0>(float2* inputs, float2* outputs,
     int bid_cnt = 0;
     
     float2* shared = (float2*) ext_shared;
-    int threadblock_per_SM = 128;
+    int threadblock_per_SM = 256;
     int tb_gap = threadblock_per_SM * 108;
     int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
     float2 r[3];
@@ -55,7 +55,7 @@ __global__ void fft_radix_2<float2, 2, 0, 0, 0>(float2* inputs, float2* outputs,
     __syncthreads();
     int bid = 0;
     for(bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap;
-                bid_cnt < thread_bs && bid < (4 * BS + 128 - 1) / 128; bid += delta_bid)
+                bid_cnt < thread_bs && bid < (4 * BS + 64 - 1) / 64; bid += delta_bid)
     {
     bid_cnt += 1;
             
@@ -64,17 +64,17 @@ __global__ void fft_radix_2<float2, 2, 0, 0, 0>(float2* inputs, float2* outputs,
     
             gPtr = inputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
         rPtr[0] = *(gPtr + 0);
         rPtr_3[0].x += rPtr[0].x;
@@ -119,17 +119,17 @@ __global__ void fft_radix_2<float2, 2, 0, 0, 0>(float2* inputs, float2* outputs,
     tx = threadIdx.x;
     gPtr = outputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
             *(gPtr + 0) = rPtr[0];
             rPtr_4[0].x += rPtr[0].x;
@@ -157,7 +157,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
     int bid_cnt = 0;
     
     float2* shared = (float2*) ext_shared;
-    int threadblock_per_SM = 128;
+    int threadblock_per_SM = 256;
     int tb_gap = threadblock_per_SM * 108;
     int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
     float2 r[3];
@@ -215,26 +215,26 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
     tmp_3.x = 0;
     tmp_3.y = 0;
     
-    rPtr_2[0] = *(shPtr +  tx / 32 + 0);
+    rPtr_2[0] = *(shPtr +  tx / 16 + 0);
     rPtr_3[0].x = 0; rPtr_3[0].y = 0;
     rPtr_4[0].x = 0; rPtr_4[0].y = 0;
     
-    rPtr_2[1] = *(shPtr +  tx / 32 + 1);
+    rPtr_2[1] = *(shPtr +  tx / 16 + 1);
     rPtr_3[1].x = 0; rPtr_3[1].y = 0;
     rPtr_4[1].x = 0; rPtr_4[1].y = 0;
     
-    rPtr_2[2] = *(shPtr +  tx / 32 + 2);
+    rPtr_2[2] = *(shPtr +  tx / 16 + 2);
     rPtr_3[2].x = 0; rPtr_3[2].y = 0;
     rPtr_4[2].x = 0; rPtr_4[2].y = 0;
     
-    rPtr_2[3] = *(shPtr +  tx / 32 + 3);
+    rPtr_2[3] = *(shPtr +  tx / 16 + 3);
     rPtr_3[3].x = 0; rPtr_3[3].y = 0;
     rPtr_4[3].x = 0; rPtr_4[3].y = 0;
     
     __syncthreads();
     int bid = 0;
     for(bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap;
-                bid_cnt < thread_bs && bid < (4 * BS + 128 - 1) / 128; bid += delta_bid)
+                bid_cnt < thread_bs && bid < (4 * BS + 64 - 1) / 64; bid += delta_bid)
     {
     bid_cnt += 1;
             
@@ -243,23 +243,23 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
     
             gPtr = inputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
         rPtr[0] = *(gPtr + 0);
         rPtr_3[0].x += rPtr[0].x;
         rPtr_3[0].y += rPtr[0].y;
         
-        // tmp = checksum_DFT[tx / 32 + 0];
+        // tmp = checksum_DFT[tx / 16 + 0];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[0], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[0], rPtr_2[0])
         turboFFT_ZMUL(tmp, rPtr[0], rPtr_2[0])
@@ -270,7 +270,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
         rPtr_3[1].x += rPtr[1].x;
         rPtr_3[1].y += rPtr[1].y;
         
-        // tmp = checksum_DFT[tx / 32 + 1];
+        // tmp = checksum_DFT[tx / 16 + 1];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[1], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[1], rPtr_2[1])
         turboFFT_ZMUL(tmp, rPtr[1], rPtr_2[1])
@@ -281,7 +281,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
         rPtr_3[2].x += rPtr[2].x;
         rPtr_3[2].y += rPtr[2].y;
         
-        // tmp = checksum_DFT[tx / 32 + 2];
+        // tmp = checksum_DFT[tx / 16 + 2];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[2], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[2], rPtr_2[2])
         turboFFT_ZMUL(tmp, rPtr[2], rPtr_2[2])
@@ -292,7 +292,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
         rPtr_3[3].x += rPtr[3].x;
         rPtr_3[3].y += rPtr[3].y;
         
-        // tmp = checksum_DFT[tx / 32 + 3];
+        // tmp = checksum_DFT[tx / 16 + 3];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[3], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[3], rPtr_2[3])
         turboFFT_ZMUL(tmp, rPtr[3], rPtr_2[3])
@@ -328,53 +328,53 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
     tx = threadIdx.x;
     gPtr = outputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
         // 1's vector
         // tmp_3.y -=  (rPtr[0].y + rPtr[0].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[0].y + rPtr[0].x);
-        turboFFT_ZMUL(tmp, rPtr[0],r[(0 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[0],r[(0 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[0], r[(0 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[0], r[(0 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[0], r[(0 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[0], r[(0 + tx / 16) % 3])
         
         // 1's vector
         // tmp_3.y -=  (rPtr[2].y + rPtr[2].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[2].y + rPtr[2].x);
-        turboFFT_ZMUL(tmp, rPtr[2],r[(1 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[2],r[(1 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[2], r[(1 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[2], r[(1 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[2], r[(1 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[2], r[(1 + tx / 16) % 3])
         
         // 1's vector
         // tmp_3.y -=  (rPtr[1].y + rPtr[1].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[1].y + rPtr[1].x);
-        turboFFT_ZMUL(tmp, rPtr[1],r[(2 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[1],r[(2 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[1], r[(2 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[1], r[(2 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[1], r[(2 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[1], r[(2 + tx / 16) % 3])
         
         // 1's vector
         // tmp_3.y -=  (rPtr[3].y + rPtr[3].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[3].y + rPtr[3].x);
-        turboFFT_ZMUL(tmp, rPtr[3],r[(3 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[3],r[(3 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[3], r[(3 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[3], r[(3 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[3], r[(3 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[3], r[(3 + tx / 16) % 3])
         
             *(gPtr + 0) = rPtr[0];
             rPtr_4[0].x += rPtr[0].x;
@@ -397,14 +397,14 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
         {
         
         // 1's vector
-        // tmp.x = (tx / 32 == 0) ? (rPtr_3[0].y + rPtr_3[0].x) * 4: 0;
-        // tmp.y = (tx / 32 == 0) ? (abs(rPtr_3[0].y) + abs(rPtr_3[0].x)) * 4: 0;
+        // tmp.x = (tx / 16 == 0) ? (rPtr_3[0].y + rPtr_3[0].x) * 4: 0;
+        // tmp.y = (tx / 16 == 0) ? (abs(rPtr_3[0].y) + abs(rPtr_3[0].x)) * 4: 0;
         tmp = tmp_1;
         tmp_1.y += tmp.x;
         tmp_1.x = (abs(tmp.y) + abs(tmp.x));
         
         // 1's vector
-        // tmp.x = (tx / 32 == 0) ? tmp_3.x : 0;
+        // tmp.x = (tx / 16 == 0) ? tmp_3.x : 0;
         tmp.x = tmp_3.x;
         tmp_3.y = tmp.x + tmp_3.y;
         tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 16, 32);
@@ -430,8 +430,8 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 0>(float2* inputs, float2* outputs,
         shPtr[(tx / 32) * 2 + 1] = tmp_3;
         __syncthreads();
         
-            tmp_1 = shPtr[(tx % 1) * 2];
-            tmp_3 = shPtr[(tx % 1) * 2 + 1];
+            tmp_1 = shPtr[(tx % 0) * 2];
+            tmp_3 = shPtr[(tx % 0) * 2 + 1];
         
             // if(tx == 0 && abs(tmp_1.y) / (1000 + abs(tmp_1.x)) > 1e-3)printf("1, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // if(abs(tmp_1.y) / (1000 + abs(tmp_1.x)) > 0.001)printf("1, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
@@ -459,7 +459,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
     int bid_cnt = 0;
     
     float2* shared = (float2*) ext_shared;
-    int threadblock_per_SM = 128;
+    int threadblock_per_SM = 256;
     int tb_gap = threadblock_per_SM * 108;
     int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
     float2 r[3];
@@ -517,26 +517,26 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
     tmp_3.x = 0;
     tmp_3.y = 0;
     
-    rPtr_2[0] = *(shPtr +  tx / 32 + 0);
+    rPtr_2[0] = *(shPtr +  tx / 16 + 0);
     rPtr_3[0].x = 0; rPtr_3[0].y = 0;
     rPtr_4[0].x = 0; rPtr_4[0].y = 0;
     
-    rPtr_2[1] = *(shPtr +  tx / 32 + 1);
+    rPtr_2[1] = *(shPtr +  tx / 16 + 1);
     rPtr_3[1].x = 0; rPtr_3[1].y = 0;
     rPtr_4[1].x = 0; rPtr_4[1].y = 0;
     
-    rPtr_2[2] = *(shPtr +  tx / 32 + 2);
+    rPtr_2[2] = *(shPtr +  tx / 16 + 2);
     rPtr_3[2].x = 0; rPtr_3[2].y = 0;
     rPtr_4[2].x = 0; rPtr_4[2].y = 0;
     
-    rPtr_2[3] = *(shPtr +  tx / 32 + 3);
+    rPtr_2[3] = *(shPtr +  tx / 16 + 3);
     rPtr_3[3].x = 0; rPtr_3[3].y = 0;
     rPtr_4[3].x = 0; rPtr_4[3].y = 0;
     
     __syncthreads();
     int bid = 0;
     for(bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap;
-                bid_cnt < thread_bs && bid < (4 * BS + 128 - 1) / 128; bid += delta_bid)
+                bid_cnt < thread_bs && bid < (4 * BS + 64 - 1) / 64; bid += delta_bid)
     {
     bid_cnt += 1;
             
@@ -545,23 +545,23 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
     
             gPtr = inputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
         rPtr[0] = *(gPtr + 0);
         rPtr_3[0].x += rPtr[0].x;
         rPtr_3[0].y += rPtr[0].y;
         
-        // tmp = checksum_DFT[tx / 32 + 0];
+        // tmp = checksum_DFT[tx / 16 + 0];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[0], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[0], rPtr_2[0])
         turboFFT_ZMUL(tmp, rPtr[0], rPtr_2[0])
@@ -572,7 +572,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
         rPtr_3[1].x += rPtr[1].x;
         rPtr_3[1].y += rPtr[1].y;
         
-        // tmp = checksum_DFT[tx / 32 + 1];
+        // tmp = checksum_DFT[tx / 16 + 1];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[1], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[1], rPtr_2[1])
         turboFFT_ZMUL(tmp, rPtr[1], rPtr_2[1])
@@ -583,7 +583,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
         rPtr_3[2].x += rPtr[2].x;
         rPtr_3[2].y += rPtr[2].y;
         
-        // tmp = checksum_DFT[tx / 32 + 2];
+        // tmp = checksum_DFT[tx / 16 + 2];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[2], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[2], rPtr_2[2])
         turboFFT_ZMUL(tmp, rPtr[2], rPtr_2[2])
@@ -594,7 +594,7 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
         rPtr_3[3].x += rPtr[3].x;
         rPtr_3[3].y += rPtr[3].y;
         
-        // tmp = checksum_DFT[tx / 32 + 3];
+        // tmp = checksum_DFT[tx / 16 + 3];
         // turboFFT_ZMUL_ACC(tmp_1, rPtr[3], tmp);
         //  turboFFT_ZMUL_ACC(tmp_1, rPtr[3], rPtr_2[3])
         turboFFT_ZMUL(tmp, rPtr[3], rPtr_2[3])
@@ -632,53 +632,53 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
     tx = threadIdx.x;
     gPtr = outputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
         // 1's vector
         // tmp_3.y -=  (rPtr[0].y + rPtr[0].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[0].y + rPtr[0].x);
-        turboFFT_ZMUL(tmp, rPtr[0],r[(0 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[0],r[(0 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[0], r[(0 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[0], r[(0 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[0], r[(0 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[0], r[(0 + tx / 16) % 3])
         
         // 1's vector
         // tmp_3.y -=  (rPtr[2].y + rPtr[2].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[2].y + rPtr[2].x);
-        turboFFT_ZMUL(tmp, rPtr[2],r[(1 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[2],r[(1 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[2], r[(1 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[2], r[(1 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[2], r[(1 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[2], r[(1 + tx / 16) % 3])
         
         // 1's vector
         // tmp_3.y -=  (rPtr[1].y + rPtr[1].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[1].y + rPtr[1].x);
-        turboFFT_ZMUL(tmp, rPtr[1],r[(2 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[1],r[(2 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[1], r[(2 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[1], r[(2 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[1], r[(2 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[1], r[(2 + tx / 16) % 3])
         
         // 1's vector
         // tmp_3.y -=  (rPtr[3].y + rPtr[3].x) * bid_cnt;
         // tmp_1.y -=  (rPtr[3].y + rPtr[3].x);
-        turboFFT_ZMUL(tmp, rPtr[3],r[(3 + tx / 32) % 3])
+        turboFFT_ZMUL(tmp, rPtr[3],r[(3 + tx / 16) % 3])
         tmp_1.y -= (tmp.x + tmp.y);
         tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[3], r[(3 + tx / 32) % 3])
-        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[3], r[(3 + tx / 32) % 3])
+        // turboFFT_ZMUL_NACC(tmp_1,  rPtr[3], r[(3 + tx / 16) % 3])
+        // turboFFT_ZMUL_NACC(tmp_3,  rPtr[3], r[(3 + tx / 16) % 3])
         
             *(gPtr + 0) = rPtr[0];
             rPtr_4[0].x += rPtr[0].x;
@@ -701,14 +701,14 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
         {
         
         // 1's vector
-        // tmp.x = (tx / 32 == 0) ? (rPtr_3[0].y + rPtr_3[0].x) * 4: 0;
-        // tmp.y = (tx / 32 == 0) ? (abs(rPtr_3[0].y) + abs(rPtr_3[0].x)) * 4: 0;
+        // tmp.x = (tx / 16 == 0) ? (rPtr_3[0].y + rPtr_3[0].x) * 4: 0;
+        // tmp.y = (tx / 16 == 0) ? (abs(rPtr_3[0].y) + abs(rPtr_3[0].x)) * 4: 0;
         tmp = tmp_1;
         tmp_1.y += tmp.x;
         tmp_1.x = (abs(tmp.y) + abs(tmp.x));
         
         // 1's vector
-        // tmp.x = (tx / 32 == 0) ? tmp_3.x : 0;
+        // tmp.x = (tx / 16 == 0) ? tmp_3.x : 0;
         tmp.x = tmp_3.x;
         tmp_3.y = tmp.x + tmp_3.y;
         tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 16, 32);
@@ -734,8 +734,8 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
         shPtr[(tx / 32) * 2 + 1] = tmp_3;
         __syncthreads();
         
-            tmp_1 = shPtr[(tx % 1) * 2];
-            tmp_3 = shPtr[(tx % 1) * 2 + 1];
+            tmp_1 = shPtr[(tx % 0) * 2];
+            tmp_3 = shPtr[(tx % 0) * 2 + 1];
         
             // if(tx == 0 && abs(tmp_1.y) / (1000 + abs(tmp_1.x)) > 1e-3)printf("1, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
             // if(abs(tmp_1.y) / (1000 + abs(tmp_1.x)) > 0.001)printf("1, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
@@ -765,17 +765,17 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
     
             gPtr = inputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
         // rPtr[0] = rPtr_3[0];
         rPtr[0] = *(gPtr + 0);
@@ -816,17 +816,17 @@ __global__ void fft_radix_2<float2, 2, 0, 1, 1>(float2* inputs, float2* outputs,
     tx = threadIdx.x;
     gPtr = outputs;
     
-    gPtr += tx / 32 * 1;
+    gPtr += tx / 16 * 1;
     
     gPtr += (bx % 1) * 4 * 1;
     bx = bx / 1;
     
-    gPtr += (bx % 1) * 32 * 4;
+    gPtr += (bx % 1) * 16 * 4;
     bx = bx / 1;
     
-    gPtr += tx % 32 * 4;
+    gPtr += tx % 16 * 4;
     
-    gPtr += (bx % BS * 128);
+    gPtr += (bx % BS * 64);
     
             // turboFFT_ZSUB(rPtr[0], rPtr[0], rPtr_4[0]);
             

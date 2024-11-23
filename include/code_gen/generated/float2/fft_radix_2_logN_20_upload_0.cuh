@@ -374,7 +374,9 @@ __global__ void fft_radix_2<float2, 20, 0, 0, 0>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[1023 + j];
+    delta_angle.x = __cosf(j * -0.006135923322290182f);
+    delta_angle.y = __sinf(j * -0.006135923322290182f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -756,7 +758,9 @@ __global__ void fft_radix_2<float2, 20, 0, 0, 0>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -1020,8 +1024,10 @@ __global__ void fft_radix_2<float2, 20, 0, 0, 0>(float2* inputs, float2* outputs
     
     global_k += tx / 4;
     
-        delta_angle = twiddle[1048575 + global_j * (64)];
-        angle = twiddle[1048575 + global_j * global_k];
+        delta_angle.x = __cosf(global_j *  -0.0003834952076431364f);
+        delta_angle.y = __sinf(global_j *  -0.0003834952076431364f);
+        angle.x = __cosf( global_j * global_k * -5.992112452678286e-06f);
+        angle.y = __sinf( global_j * global_k * -5.992112452678286e-06f);
         
             tmp = rPtr[0];
             turboFFT_ZMUL(rPtr[0], tmp, angle);
@@ -1757,7 +1763,9 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 0>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[1023 + j];
+    delta_angle.x = __cosf(j * -0.006135923322290182f);
+    delta_angle.y = __sinf(j * -0.006135923322290182f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -2139,7 +2147,9 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 0>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -2412,8 +2422,10 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 0>(float2* inputs, float2* outputs
         // turboFFT_ZMUL_NACC(tmp_1,  rPtr[0], r[(0 + tx / 4) % 3])
         // turboFFT_ZMUL_NACC(tmp_3,  rPtr[0], r[(0 + tx / 4) % 3])
         
-        delta_angle = twiddle[1048575 + global_j * (64)];
-        angle = twiddle[1048575 + global_j * global_k];
+        delta_angle.x = __cosf(global_j *  -0.0003834952076431364f);
+        delta_angle.y = __sinf(global_j *  -0.0003834952076431364f);
+        angle.x = __cosf( global_j * global_k * -5.992112452678286e-06f);
+        angle.y = __sinf( global_j * global_k * -5.992112452678286e-06f);
         
             tmp = rPtr[0];
             turboFFT_ZMUL(rPtr[0], tmp, angle);
@@ -3353,7 +3365,9 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 1>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[1023 + j];
+    delta_angle.x = __cosf(j * -0.006135923322290182f);
+    delta_angle.y = __sinf(j * -0.006135923322290182f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -3735,7 +3749,9 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 1>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -4008,8 +4024,10 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 1>(float2* inputs, float2* outputs
         // turboFFT_ZMUL_NACC(tmp_1,  rPtr[0], r[(0 + tx / 4) % 3])
         // turboFFT_ZMUL_NACC(tmp_3,  rPtr[0], r[(0 + tx / 4) % 3])
         
-        delta_angle = twiddle[1048575 + global_j * (64)];
-        angle = twiddle[1048575 + global_j * global_k];
+        delta_angle.x = __cosf(global_j *  -0.0003834952076431364f);
+        delta_angle.y = __sinf(global_j *  -0.0003834952076431364f);
+        angle.x = __cosf( global_j * global_k * -5.992112452678286e-06f);
+        angle.y = __sinf( global_j * global_k * -5.992112452678286e-06f);
         
             tmp = rPtr[0];
             turboFFT_ZMUL(rPtr[0], tmp, angle);
@@ -4678,7 +4696,9 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 1>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[1023 + j];
+    delta_angle.x = __cosf(j * -0.006135923322290182f);
+    delta_angle.y = __sinf(j * -0.006135923322290182f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -5060,7 +5080,9 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 1>(float2* inputs, float2* outputs
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -5324,8 +5346,10 @@ __global__ void fft_radix_2<float2, 20, 0, 1, 1>(float2* inputs, float2* outputs
     
     global_k += tx / 4;
     
-        delta_angle = twiddle[1048575 + global_j * (64)];
-        angle = twiddle[1048575 + global_j * global_k];
+        delta_angle.x = __cosf(global_j *  -0.0003834952076431364f);
+        delta_angle.y = __sinf(global_j *  -0.0003834952076431364f);
+        angle.x = __cosf( global_j * global_k * -5.992112452678286e-06f);
+        angle.y = __sinf( global_j * global_k * -5.992112452678286e-06f);
         
             tmp = rPtr[0];
             turboFFT_ZMUL(rPtr[0], tmp, angle);

@@ -15,9 +15,9 @@ public:
     bool if_err = false;
     int datatype = 0;
     int thread_bs = 1;
-    int param_1 = 1;
+    int param_1 = 28;
     int param_2 = 1;
-    int smem_size = 1;
+    int smem_size = 128;
     int sm_cnt = 1;
     int smem_capacity = 164;
     std::string gpu = "A100";
@@ -72,6 +72,10 @@ public:
             thread_bs = std::atoi(value);
         } else if (strcmp(parameterName, "--gpu") == 0) {
             gpu = value;
+        } else if (strcmp(parameterName, "--smem_size") == 0) {
+            smem_size = std::atol(value);
+        } else if (strcmp(parameterName, "--param_1") == 0) {
+            param_1 = std::atol(value);
         } else {
             return false; // 未知的参数名
         }
@@ -99,11 +103,11 @@ public:
             param_2 = 4;
             smem_size = 128;
             sm_cnt = 108;
-            smem_capacity = 164;
+            smem_capacity = 64;
         } else{
-            param_1 = 28;
+            // param_1 = 28;
             param_2 = 16;
-            smem_size = 128;
+            // smem_size = 128;
             sm_cnt = 108;
             smem_capacity = 164;
         }

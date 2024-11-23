@@ -80,7 +80,7 @@ void test_cufft_ft<float2>(float2* input_d, float2* output_d, float2* output_cuf
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
     
     mem_bandwidth = (float)(N * bs * 8 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
-    printf("cuFFT_FT_online_mychecksum, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
+    printf("cuFFT Offline FT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
 
     // printf("cuFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
 
@@ -145,7 +145,7 @@ void test_cufft_ft<double2>(double2* input_d, double2* output_d, double2* output
     
     // printf("cuFFT finished: T=%8.3fms, FLOPS=%8.3fGFLOPS\n", elapsed_time, gflops);
     mem_bandwidth = (float)(N * bs * 16 * 2) / (elapsed_time) * 1000.f / 1000000000.f;
-    printf("cuFFT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
+    printf("cuFFT Offline FT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
 
 
 

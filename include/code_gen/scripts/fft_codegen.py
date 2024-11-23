@@ -4,10 +4,13 @@ import argparse
 import numpy as np
 from main_codegen import main_codegen
 import sys
+M_PI = 3.141592653589793
 class TurboFFT:
     def __init__(self, global_tensor_shape=[256, 1], radix=2, WorkerFFTSizes = [8],
-                        threadblock_bs=[1], threadblock_bs_dim=[0], shared_mem_size=[0], data_type='double2',
-                        if_special=False, if_ft=0, if_err_injection=0,  err_smoothing=1000, err_inj=100, err_threshold=1e-3):
+                        threadblock_bs=[1], threadblock_bs_dim=[0], shared_mem_size=[0], 
+                        data_type='double2', if_special=False, if_ft=0, 
+                        if_err_injection=0,  err_smoothing=1000, err_inj=100,
+                        err_threshold=1e-3, if_write=True):
         self.fft_code = []
         self.data_type = data_type
         self.gPtr = "gPtr"
@@ -29,6 +32,7 @@ class TurboFFT:
         self.radix = radix
         self.state_vec = th.zeros(64, 6)
         self.if_special = if_special
+        self.if_write = if_write
         for i in range(64):
             for j in range(6):
                 self.state_vec[i, j] = int((i // (2 ** j))) % 2
@@ -78,7 +82,8 @@ class TurboFFT:
                     with open(file_name, 'w') as f:
                         f.write("\n")
                 else:
-                    if self.ft == 0:
+                    # if self.ft == 0:
+                    if self.ft == 0 or self.if_write is True:
                         with open(file_name, 'w') as f:
                             f.write(self.fft_code[i])
                     else:
@@ -94,7 +99,8 @@ class TurboFFT:
                         f.write("\n")
                 else:
                     file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{0}.cuh"
-                    if self.ft == 0:
+                    # if self.ft == 0:
+                    if self.ft == 0 or self.if_write is True:
                         with open(file_name, 'w') as f:
                             f.write(self.fft_code[1])
                     else:
@@ -388,7 +394,13 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
                             globalAccess_code += f'''
         delta_angle = twiddle[{N - 1} + global_j * ({global_tensor_shape[dim] // WorkerFFTSize})];
         angle = twiddle[{N - 1} + global_j * global_k];
-        '''                    
+        ''' if self.data_type == 'double2' else f'''
+        delta_angle.x = __cosf(global_j *  {-2.0 * M_PI * (global_tensor_shape[dim] // WorkerFFTSize) / float(N)}f);
+        delta_angle.y = __sinf(global_j *  {-2.0 * M_PI * (global_tensor_shape[dim] // WorkerFFTSize) / float(N)}f);
+        angle.x = __cosf( global_j * global_k * {-2.0 * M_PI / float(N)}f);
+        angle.y = __sinf( global_j * global_k * {-2.0 * M_PI / float(N)}f);
+        '''
+
                         else:
                             globalAccess_code += f'''
         tmp = angle;
@@ -623,6 +635,11 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
                 if output_id == 0:
                     reg2shared_code += f'''
     delta_angle = twiddle[{N - 1} + j];
+    ''' if self.data_type == 'double2' else f'''
+    delta_angle.x = __cosf(j * {-2.0 * M_PI / N}f);
+    delta_angle.y = __sinf(j * {-2.0 * M_PI / N}f);
+    '''
+                    reg2shared_code += f''' 
     angle.x = 1;
     angle.y = 0;
     '''       
@@ -767,6 +784,6 @@ if __name__ == '__main__':
         fft = TurboFFT(global_tensor_shape=global_tensor_shape, WorkerFFTSizes=WorkerFFTSizes,
                     threadblock_bs=threadblock_bs, threadblock_bs_dim=threadblock_bs_dim[st - 1], shared_mem_size=shared_mem_size, data_type=datatype, if_special=if_special,
                     if_ft=if_ft, if_err_injection=if_err_injection, err_inj=err_inj, 
-                    err_smoothing=err_smoothing, err_threshold=err_threshold)
+                    err_smoothing=err_smoothing, err_threshold=err_threshold, if_write=False)
         fft.codegen()
         fft.save_generated_code()

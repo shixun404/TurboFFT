@@ -33,7 +33,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     
         cudaFuncAttributes attr;
         if(cudaFuncSetAttribute(entry.turboFFTArr[logN][i], cudaFuncAttributeMaxDynamicSharedMemorySize, shared_size[i]))
-        printf("Set DynamicSharedMem failed\n");
+        printf("Set DynamicSharedMem failed %d\n", shared_size[i]);
         if(cudaFuncSetAttribute(entry.turboFFTArr[logN][i], cudaFuncAttributePreferredSharedMemoryCarveout, (shared_per_SM * 100) / (config.smem_capacity * 1024)))
         printf("Set smemCarveout failed\n");
         cudaError_t get_attr_res = cudaFuncGetAttributes (&attr, entry.turboFFTArr[logN][i] );
@@ -117,12 +117,12 @@ void TurboFFT_main(ProgramConfig &config){
         for(long long int logN = 1; logN <= 25; ++logN){
             N *= 2;
             long long int bs = 1;
-            if(config.if_bench % 10 == 2) bs = bs << (config.param_1 - logN);
+            // if(config.if_bench % 10 == 2) bs = bs << (config.param_1 - logN);
             for(int i = 0; i <= config.param_1 - logN; i += 1){
                 if(config.if_bench > 10) profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 else test_turbofft<DataType, if_ft, if_err, gpu_spec>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest, config);
                 bs *= 2;
-                if(config.if_bench % 10 == 2) break; 
+                // if(config.if_bench % 10 == 2) break; 
             }
         }
     }

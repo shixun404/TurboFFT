@@ -193,7 +193,9 @@ __global__ void fft_radix_2<float2, 9, 0, 0, 0>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[511 + j];
+    delta_angle.x = __cosf(j * -0.012271846644580364f);
+    delta_angle.y = __sinf(j * -0.012271846644580364f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -360,7 +362,9 @@ __global__ void fft_radix_2<float2, 9, 0, 0, 0>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -876,7 +880,9 @@ __global__ void fft_radix_2<float2, 9, 0, 1, 0>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[511 + j];
+    delta_angle.x = __cosf(j * -0.012271846644580364f);
+    delta_angle.y = __sinf(j * -0.012271846644580364f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -1043,7 +1049,9 @@ __global__ void fft_radix_2<float2, 9, 0, 1, 0>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -1694,7 +1702,9 @@ __global__ void fft_radix_2<float2, 9, 0, 1, 1>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[511 + j];
+    delta_angle.x = __cosf(j * -0.012271846644580364f);
+    delta_angle.y = __sinf(j * -0.012271846644580364f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -1861,7 +1871,9 @@ __global__ void fft_radix_2<float2, 9, 0, 1, 1>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -2323,7 +2335,9 @@ __global__ void fft_radix_2<float2, 9, 0, 1, 1>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[511 + j];
+    delta_angle.x = __cosf(j * -0.012271846644580364f);
+    delta_angle.y = __sinf(j * -0.012271846644580364f);
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -2490,7 +2504,9 @@ __global__ void fft_radix_2<float2, 9, 0, 1, 1>(float2* inputs, float2* outputs,
     
     __syncthreads();
     
-    delta_angle = twiddle[63 + j];
+    delta_angle.x = __cosf(j * -0.09817477315664291f);
+    delta_angle.y = __sinf(j * -0.09817477315664291f);
+     
     angle.x = 1;
     angle.y = 0;
     

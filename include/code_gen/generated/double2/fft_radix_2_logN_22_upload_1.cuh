@@ -375,6 +375,7 @@ __global__ void fft_radix_2<double2, 22, 1, 0, 0>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[2047 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -757,6 +758,7 @@ __global__ void fft_radix_2<double2, 22, 1, 0, 0>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[127 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -1728,6 +1730,7 @@ __global__ void fft_radix_2<double2, 22, 1, 1, 0>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[2047 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -2110,6 +2113,7 @@ __global__ void fft_radix_2<double2, 22, 1, 1, 0>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[127 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -3296,6 +3300,7 @@ __global__ void fft_radix_2<double2, 22, 1, 1, 1>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[2047 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -3678,6 +3683,7 @@ __global__ void fft_radix_2<double2, 22, 1, 1, 1>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[127 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -4579,6 +4585,7 @@ __global__ void fft_radix_2<double2, 22, 1, 1, 1>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[2047 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
@@ -4961,6 +4968,7 @@ __global__ void fft_radix_2<double2, 22, 1, 1, 1>(double2* inputs, double2* outp
     __syncthreads();
     
     delta_angle = twiddle[127 + j];
+     
     angle.x = 1;
     angle.y = 0;
     
