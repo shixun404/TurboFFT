@@ -18,12 +18,13 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     TurboFFT_Kernel_Entry<DataType, if_ft, if_err, gpu_spec> entry;
     int M = 16;
     dim3 gridDim1((N + 255) / 256, bs / M, 1);
+    printf("turboFFT, %d, %d, ",  (int)log2f(N),  (int)log2f(bs));
     for(int i = 0; i < kernel_launch_times; ++i){
         threadblock_bs = param[5 + i];
         Ni = (1 << param[2 + i]); 
         WorkerFFTSize = param[8 + i]; 
         shared_size[i] = Ni * threadblock_bs * sizeof(DataType);
-        
+        // printf("shared_size[%d]=%d, ", i, shared_size[i]);
         blockdims[i] = (Ni * threadblock_bs) / WorkerFFTSize;
         long long int shared_per_SM = config.smem_size * 1024;
         griddims[i] = min(config.sm_cnt * min((2048 / blockdims[i]), (shared_per_SM / shared_size[i])), 
@@ -67,7 +68,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     elapsed_time = elapsed_time / ntest;
     gflops = 5 * N * log2f(N) * bs / elapsed_time * 1000 / 1000000000.f;
     mem_bandwidth = (float)(N * bs * sizeof(DataType) * 2) / (elapsed_time) * 1000.f / 1000000000.f;
-    printf("turboFFT, %d, %d, %8.3f, %8.3f, %8.3f\n",  (int)log2f(N),  (int)log2f(bs), elapsed_time, gflops, mem_bandwidth);
+    printf("%8.3f, %8.3f, %8.3f\n", elapsed_time, gflops, mem_bandwidth);
     
     checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)outputs[kernel_launch_times - 1], N * bs * sizeof(DataType), cudaMemcpyDeviceToHost));
 }
@@ -117,12 +118,12 @@ void TurboFFT_main(ProgramConfig &config){
         for(long long int logN = 1; logN <= 25; ++logN){
             N *= 2;
             long long int bs = 1;
-            // if(config.if_bench % 10 == 2) bs = bs << (config.param_1 - logN);
+            if(config.if_bench % 10 == 2) bs = bs << (config.param_1 - logN);
             for(int i = 0; i <= config.param_1 - logN; i += 1){
                 if(config.if_bench > 10) profiler::cufft::test_cufft<DataType>(input_d, output_d, output_cufft, N, bs, ntest);
                 else test_turbofft<DataType, if_ft, if_err, gpu_spec>(input_d, output_d, output_turbofft, twiddle_d, checksum_d, params[logN], bs, config.thread_bs, ntest, config);
                 bs *= 2;
-                // if(config.if_bench % 10 == 2) break; 
+                if(config.if_bench % 10 == 2) break; 
             }
         }
     }
@@ -138,7 +139,7 @@ int main(int argc, char *argv[]){
     ProgramConfig config;
     config.parseCommandLine(argc, argv);
     
-    config.displayConfig();
+    // config.displayConfig();
     // Proceed with the rest of the program
     if(config.gpu == "T4"){
         if(config.datatype == 0) {

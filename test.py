@@ -44,13 +44,13 @@ def helper_filename(dtype, bd, max_logN=26):
 
 for gpu in gpus:
     print(f"#if ARCH_SM == {spec[gpu]}")
-    # print(helper_filename('float2', bd=float_bd[gpu]))
-    # helper_include("float2", if_ft=0, if_err_inj=0, bd=float_bd[gpu], gpu=gpu, spec=spec[gpu])
-    # helper_include("float2", if_ft=1, if_err_inj=0, bd=float_bd[gpu], gpu=gpu, spec=spec[gpu])
-    # helper_include("float2", if_ft=1, if_err_inj=1, bd=float_bd[gpu], gpu=gpu, spec=spec[gpu])
+    print(helper_filename('float2', bd=float_bd[gpu]))
+    helper_include("float2", if_ft=0, if_err_inj=0, bd=float_bd[gpu], gpu=gpu, spec=spec[gpu])
+    helper_include("float2", if_ft=1, if_err_inj=0, bd=float_bd[gpu], gpu=gpu, spec=spec[gpu])
+    helper_include("float2", if_ft=1, if_err_inj=1, bd=float_bd[gpu], gpu=gpu, spec=spec[gpu])
 
     print(helper_filename('double2', bd=float_bd[gpu]))
     helper_include("double2", if_ft=0, if_err_inj=0, bd=double_bd[gpu], gpu=gpu, spec=spec[gpu])
     helper_include("double2", if_ft=1, if_err_inj=0, bd=double_bd[gpu], gpu=gpu, spec=spec[gpu])
-    # helper_include("double2", if_ft=1, if_err_inj=1, bd=double_bd[gpu], gpu=gpu, spec=spec[gpu])
+    helper_include("double2", if_ft=1, if_err_inj=1, bd=double_bd[gpu], gpu=gpu, spec=spec[gpu])
     print("#endif")
