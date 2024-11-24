@@ -7,6 +7,7 @@ python fft_codegen.py --gpu $gpu --datatype double2
 python fft_codegen.py --gpu $gpu --datatype double2  --if_ft 1
 python fft_codegen.py --gpu $gpu --datatype double2 --if_ft 1 --if_err_injection 1
 cd -
+mkdir build
 cd build
 cmake ..
 make -j
