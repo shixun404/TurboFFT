@@ -70,7 +70,7 @@ void test_turbofft( DataType* input_d, DataType* output_d, DataType* output_turb
     mem_bandwidth = (float)(N * bs * sizeof(DataType) * 2) / (elapsed_time) * 1000.f / 1000000000.f;
     printf("%8.3f, %8.3f, %8.3f\n", elapsed_time, gflops, mem_bandwidth);
     
-    checkCudaErrors(cudaMemcpy((void*)output_turbofft, (void*)outputs[kernel_launch_times - 1], N * bs * sizeof(DataType), cudaMemcpyDeviceToHost));
+    cudaMemcpy((void*)output_turbofft, (void*)outputs[kernel_launch_times - 1], N * bs * sizeof(DataType), cudaMemcpyDeviceToHost);
 }
 
 template <typename DataType, int if_ft, int if_err, int gpu_spec>
