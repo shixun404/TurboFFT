@@ -180,6 +180,3 @@ The scripts `run_A100.sh` and `run_T4.sh` execute the following steps:
 |---------------|--------|-----------|---------------------------|------|--------|
 | **run_A100.sh** | 20 s   | 15 min    | 90 min                    | 3 min| 2 hr    |
 | **run_T4.sh**   | 20 s   | 10 min    | 10 min                    | 3 min| 30 min  |
-
-```
-```
