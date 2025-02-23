@@ -537,7 +537,7 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
         {self.rPtr}[{i}] = {self.shPtr}[{access_stride * i} + (tx / {dim_1}) * {dim_1} + (tx + {i}) % {dim_1}];
         '''
             return shared2reg_code
-
+        print("shared2reg", threadblock_tensor_shape, dim)
         if dim == 1 and len(self.global_tensor_shape) == 2 :
             shared2reg_code += f'''
     offset = 0;
@@ -620,6 +620,7 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
     __syncthreads();
     '''
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
+        print("reg2shared", self.global_tensor_shape, threadblock_tensor_shape, dim)
         for output_id in range(WorkerFFTSize): 
             # print(output_id, dict_output[output_id])
             if dim != len(threadblock_tensor_shape) - 1:
@@ -641,10 +642,10 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL{'_THREAD_FT' if self.if_thread_ft else ''}({self.rPtr}[{dict_output[output_id]}], tmp, angle);
     '''             
-
             if dim == 0 and len(self.global_tensor_shape) == 2 :
                 reg2shared_code += f'''
-    {self.shPtr}[offset + {access_stride} * ({output_id} + threadIdx.x % {threadblock_tensor_shape[1]}) % {threadblock_tensor_shape[1]} + ({output_id} / {threadblock_tensor_shape[1]}) * {threadblock_tensor_shape[1]}] = {self.rPtr}[{dict_output[output_id]}];
+    // {self.shPtr}[offset + {access_stride} * ({output_id} + threadIdx.x % {threadblock_tensor_shape[1]}) % {threadblock_tensor_shape[1]} + ({output_id} / {threadblock_tensor_shape[1]}) * {threadblock_tensor_shape[1]}] = {self.rPtr}[{dict_output[output_id]}];
+    {self.shPtr}[offset + {access_stride} * ({output_id} + (threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize}] = {self.rPtr}[{dict_output[output_id]}];
     '''             
             else:
                 reg2shared_code += f'''
