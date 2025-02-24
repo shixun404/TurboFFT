@@ -522,32 +522,11 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
         dim_0 = threadblock_tensor_shape[0]
         dim_1 = threadblock_tensor_shape[1]
         
-        if len(threadblock_tensor_shape) == 2 and len(self.global_tensor_shape) == 2 :
-            shared2reg_code += f'''
+        # print("shared2reg", threadblock_tensor_shape, dim)
+        # if dim == 1 and len(self.global_tensor_shape) == 2 :
+        shared2reg_code += f'''
     offset = 0;
-    '''
-            shared2reg_code += f'''
-    __syncthreads();
-    '''
-
-            
-            for j in range(WorkerFFTSize):
-                i = j % WorkerFFTSize
-                shared2reg_code += f'''
-        {self.rPtr}[{i}] = {self.shPtr}[{access_stride * i} + (tx / {dim_1}) * {dim_1} + (tx + {i}) % {dim_1}];
-        '''
-            return shared2reg_code
-        print("shared2reg", threadblock_tensor_shape, dim)
-        if dim == 1 and len(self.global_tensor_shape) == 2 :
-            shared2reg_code += f'''
-    offset = 0;
-    offset += (tx / {dim_0}) * {dim_0} + 
-              ((tx % {dim_0}) / {dim_1}) * {dim_1} + (tx % {dim_1} + tx / {dim_0}) % {dim_1};
-    '''
-        else:
-            shared2reg_code += f'''
-    offset = 0;
-    offset += tx;
+    offset += tx % {th.prod(threadblock_tensor_shape) // WorkerFFTSize} + tx / {th.prod(threadblock_tensor_shape) // WorkerFFTSize} * {th.prod(threadblock_tensor_shape)};
     '''
         
         shared2reg_code += '''
@@ -621,6 +600,12 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
     '''
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
         print("reg2shared", self.global_tensor_shape, threadblock_tensor_shape, dim)
+        if dim == 0 and len(self.global_tensor_shape) == 2 :
+            for output_id in range(WorkerFFTSize): 
+                reg2shared_code += f'''
+                {self.rPtr_3}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
+    '''
+        
         for output_id in range(WorkerFFTSize): 
             # print(output_id, dict_output[output_id])
             if dim != len(threadblock_tensor_shape) - 1:
@@ -644,9 +629,12 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
     '''             
             if dim == 0 and len(self.global_tensor_shape) == 2 :
                 reg2shared_code += f'''
-    // {self.shPtr}[offset + {access_stride} * ({output_id} + threadIdx.x % {threadblock_tensor_shape[1]}) % {threadblock_tensor_shape[1]} + ({output_id} / {threadblock_tensor_shape[1]}) * {threadblock_tensor_shape[1]}] = {self.rPtr}[{dict_output[output_id]}];
-    {self.shPtr}[offset + {access_stride} * ({output_id} + (threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize}] = {self.rPtr}[{dict_output[output_id]}];
-    '''             
+    {self.shPtr}[offset + {access_stride} * ({output_id} + (threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize}] = {self.rPtr_3}[({output_id} + (threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize}];
+    '''
+            elif dim == 1 and len(self.global_tensor_shape) == 2 :
+                reg2shared_code += f'''
+    {self.shPtr}[offset + {access_stride} * ({output_id} + (threadIdx.x / {threadblock_tensor_shape[0]})) % {WorkerFFTSize}] = {self.rPtr_3}[({output_id} + (threadIdx.x / {threadblock_tensor_shape[0]})) % {WorkerFFTSize}];
+    '''
             else:
                 reg2shared_code += f'''
     {self.shPtr}[offset + {access_stride * output_id}] = {self.rPtr}[{dict_output[output_id]}];
