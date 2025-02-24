@@ -1,20 +1,7 @@
 
-#include "../../../TurboFFT_radix_2_template.h"
-template<>
-__global__ void fft_radix_2<float2, 5, 0, 0, 0, 0>(float2* inputs, float2* outputs, float2* twiddle, float2* checksum_DFT, int BS, int thread_bs) {
+extern __shared__ float shared_mem[];
+__global__ void fft_5(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     int bid_cnt = 0;
-    
-    float2* shared = (float2*) ext_shared;
-    int threadblock_per_SM = 128;
-    int tb_gap = threadblock_per_SM * 108;
-    int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
-    float2 r[3];
-    r[0].x = 1.0;
-    r[0].y = 0.0;
-    r[1].x = -0.5;
-    r[1].y = -0.8660253882408142;
-    r[2].x = -0.5;
-    r[2].y = 0.8660253882408142;
     int j;
     int k;
     int global_j;
@@ -29,13 +16,8 @@ __global__ void fft_radix_2<float2, 5, 0, 0, 0, 0>(float2* inputs, float2* outpu
     float2* gPtr;
     float2* shPtr;
     float2 rPtr[8];
-    float2 rPtr_2[8];
     float2 rPtr_3[8];
-    float2 rPtr_4[8];
     float2 tmp;
-    float2 tmp_1;
-    float2 tmp_2;
-    float2 tmp_3;
     float2 angle;
     float2 delta_angle;
     j = 0;
@@ -49,64 +31,34 @@ __global__ void fft_radix_2<float2, 5, 0, 0, 0, 0>(float2* inputs, float2* outpu
     bx = blockIdx.x;
     tx = threadIdx.x;
     offset = 0;
-    gPtr = inputs;
-    shPtr = shared;
+    gPtr = gPtr_1;
+    shPtr = (float2*) shared_mem;
     
-    __syncthreads();
     int bid = 0;
-    for(bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap;
-                bid_cnt < thread_bs && bid < (32 * BS + 128 - 1) / 128; bid += delta_bid)
-    {
-    bid_cnt += 1;
             
-    bx = bid;
+    bx = blockIdx.x;
     tx = threadIdx.x;
     
-            gPtr = inputs;
+        gPtr += threadIdx.x % 4;
     
-    gPtr += tx / 4 * 1;
+    gPtr += (blockIdx.x * threadblock_bs + threadIdx.x / 4) * 32;
     
-    gPtr += (bx % 1) * 32 * 1;
-    bx = bx / 1;
-    
-    gPtr += (bx % 1) * 4 * 32;
-    bx = bx / 1;
-    
-    gPtr += tx % 4 * 32;
-    
-    gPtr += (bx % BS * 128);
-    
+
         rPtr[0] = *(gPtr + 0);
-        rPtr_3[0].x += rPtr[0].x;
-        rPtr_3[0].y += rPtr[0].y;
         
         rPtr[1] = *(gPtr + 4);
-        rPtr_3[1].x += rPtr[1].x;
-        rPtr_3[1].y += rPtr[1].y;
         
         rPtr[2] = *(gPtr + 8);
-        rPtr_3[2].x += rPtr[2].x;
-        rPtr_3[2].y += rPtr[2].y;
         
         rPtr[3] = *(gPtr + 12);
-        rPtr_3[3].x += rPtr[3].x;
-        rPtr_3[3].y += rPtr[3].y;
         
         rPtr[4] = *(gPtr + 16);
-        rPtr_3[4].x += rPtr[4].x;
-        rPtr_3[4].y += rPtr[4].y;
         
         rPtr[5] = *(gPtr + 20);
-        rPtr_3[5].x += rPtr[5].x;
-        rPtr_3[5].y += rPtr[5].y;
         
         rPtr[6] = *(gPtr + 24);
-        rPtr_3[6].x += rPtr[6].x;
-        rPtr_3[6].y += rPtr[6].y;
         
         rPtr[7] = *(gPtr + 28);
-        rPtr_3[7].x += rPtr[7].x;
-        rPtr_3[7].y += rPtr[7].y;
         
     tmp = rPtr[0];
     turboFFT_ZADD(rPtr[0], tmp, rPtr[4]);
@@ -196,6 +148,47 @@ __global__ void fft_radix_2<float2, 5, 0, 0, 0, 0>(float2* inputs, float2* outpu
     
     __syncthreads();
     
+    delta_angle.x = __cosf(j * -0.19634954631328583f);
+    delta_angle.y = __sinf(j * -0.19634954631328583f);
+     
+    angle.x = 1;
+    angle.y = 0;
+    
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    tmp = rPtr[4];
+    turboFFT_ZMUL(rPtr[4], tmp, angle);
+    
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    tmp = rPtr[2];
+    turboFFT_ZMUL(rPtr[2], tmp, angle);
+    
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    tmp = rPtr[6];
+    turboFFT_ZMUL(rPtr[6], tmp, angle);
+    
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    tmp = rPtr[1];
+    turboFFT_ZMUL(rPtr[1], tmp, angle);
+    
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    tmp = rPtr[5];
+    turboFFT_ZMUL(rPtr[5], tmp, angle);
+    
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    tmp = rPtr[3];
+    turboFFT_ZMUL(rPtr[3], tmp, angle);
+    
+    tmp = angle;
+    turboFFT_ZMUL(angle, tmp, delta_angle);
+    tmp = rPtr[7];
+    turboFFT_ZMUL(rPtr[7], tmp, angle);
+    
             rPtr_3[0] = rPtr[0];
     
             rPtr_3[1] = rPtr[4];
@@ -212,60 +205,19 @@ __global__ void fft_radix_2<float2, 5, 0, 0, 0, 0>(float2* inputs, float2* outpu
     
             rPtr_3[7] = rPtr[7];
     
-    delta_angle.x = __cosf(j * -0.19634954631328583f);
-    delta_angle.y = __sinf(j * -0.19634954631328583f);
-     
-    angle.x = 1;
-    angle.y = 0;
-    
     shPtr[offset + 0] = rPtr[0];
-    
-    tmp = angle;
-    turboFFT_ZMUL(angle, tmp, delta_angle);
-    tmp = rPtr[4];
-    turboFFT_ZMUL(rPtr[4], tmp, angle);
     
     shPtr[offset + 4] = rPtr[4];
     
-    tmp = angle;
-    turboFFT_ZMUL(angle, tmp, delta_angle);
-    tmp = rPtr[2];
-    turboFFT_ZMUL(rPtr[2], tmp, angle);
-    
     shPtr[offset + 8] = rPtr[2];
-    
-    tmp = angle;
-    turboFFT_ZMUL(angle, tmp, delta_angle);
-    tmp = rPtr[6];
-    turboFFT_ZMUL(rPtr[6], tmp, angle);
     
     shPtr[offset + 12] = rPtr[6];
     
-    tmp = angle;
-    turboFFT_ZMUL(angle, tmp, delta_angle);
-    tmp = rPtr[1];
-    turboFFT_ZMUL(rPtr[1], tmp, angle);
-    
     shPtr[offset + 16] = rPtr[1];
-    
-    tmp = angle;
-    turboFFT_ZMUL(angle, tmp, delta_angle);
-    tmp = rPtr[5];
-    turboFFT_ZMUL(rPtr[5], tmp, angle);
     
     shPtr[offset + 20] = rPtr[5];
     
-    tmp = angle;
-    turboFFT_ZMUL(angle, tmp, delta_angle);
-    tmp = rPtr[3];
-    turboFFT_ZMUL(rPtr[3], tmp, angle);
-    
     shPtr[offset + 24] = rPtr[3];
-    
-    tmp = angle;
-    turboFFT_ZMUL(angle, tmp, delta_angle);
-    tmp = rPtr[7];
-    turboFFT_ZMUL(rPtr[7], tmp, angle);
     
     shPtr[offset + 28] = rPtr[7];
     
@@ -336,22 +288,15 @@ __global__ void fft_radix_2<float2, 5, 0, 0, 0, 0>(float2* inputs, float2* outpu
     turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
     tmp = rPtr[7];
             
-    bx = bid;
+    bx = blockIdx.x;
     tx = threadIdx.x;
     gPtr = outputs;
     
-    gPtr += tx / 4 * 1;
+        gPtr += threadIdx.x % 4;
     
-    gPtr += (bx % 1) * 32 * 1;
-    bx = bx / 1;
+    gPtr += (blockIdx.x * threadblock_bs + threadIdx.x / 4) * 32;
     
-    gPtr += (bx % 1) * 4 * 32;
-    bx = bx / 1;
-    
-    gPtr += tx % 4 * 32;
-    
-    gPtr += (bx % BS * 128);
-    
+
             *(gPtr + 0) = rPtr[0];
             
             *(gPtr + 4) = rPtr[1];
@@ -368,6 +313,4 @@ __global__ void fft_radix_2<float2, 5, 0, 0, 0, 0>(float2* inputs, float2* outpu
             
             *(gPtr + 28) = rPtr[7];
             
-    }
-    
 }

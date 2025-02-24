@@ -59,16 +59,11 @@ class TurboFFT:
             "bx": ("int", "gridDim.x - blockIdx.x - 1") if dim == 0 and len(self.WorkerFFTSizes) == 3 else ("int", "blockIdx.x"),
             "tx": ("int", "threadIdx.x"),
             "offset": ("int", "0"),
-            self.gPtr: (f"{self.data_type}*", "inputs"),
-            self.shPtr: (f"{self.data_type}*", "shared"),
+            self.gPtr: (f"{self.data_type}*", "gPtr_1"),
+            self.shPtr: (f"{self.data_type}*", "(float2*) shared_mem"),
             f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
-            f"{self.rPtr_2}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
             f"{self.rPtr_3}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
-            f"{self.rPtr_4}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
             "tmp": (self.data_type, None),
-            "tmp_1": (self.data_type, None),
-            "tmp_2": (self.data_type, None),
-            "tmp_3": (self.data_type, None),
             "angle": (self.data_type, None),
             "delta_angle": (self.data_type, None),
         }
@@ -212,25 +207,14 @@ class TurboFFT:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
             dim = 0
         head = f'''
-#include "../../../TurboFFT_radix_2_template.h"
-template<>
-__global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix))}, {dim}, {self.if_thread_ft}, {self.ft}, {self.if_err_injection}>''' \
-        + f'''({self.data_type}* inputs, {self.data_type}* outputs, {self.data_type}* twiddle, {self.data_type}* checksum_DFT, int BS, int thread_bs)''' + ''' {
+extern __shared__ float shared_mem[];
+__global__ void fft_{int(log(N, self.radix))}''' \
+        + f'''(float2* gPtr_1, float2* outputs, int threadblock_bs)''' + ''' {
     int bid_cnt = 0;
     '''
-        head += f'''
-    {self.data_type}* shared = ({self.data_type}*) ext_shared;
-    int threadblock_per_SM = {int(128 * 1024 / (smem_size * 16 if self.data_type == "double2" else smem_size * 8))};
-    int tb_gap = threadblock_per_SM * 108;
-    int delta_bid = ((blockIdx.x / tb_gap) ==  (gridDim.x / tb_gap)) ? (gridDim.x % tb_gap) : tb_gap;
-    {self.data_type} r[3];
-    r[0].x = 1.0;
-    r[0].y = 0.0;
-    r[1].x = -0.5;
-    r[1].y = -0.8660253882408142;
-    r[2].x = -0.5;
-    r[2].y = 0.8660253882408142;
-    '''
+    #     head += f'''
+    # {self.data_type}* shared = ({self.data_type}*) ext_shared;
+    # '''
         for key in self.local_variable.keys():
             head += f'''{self.local_variable[key][0]} {key};
     '''
@@ -238,44 +222,14 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
             if self.local_variable[key][1] is not None:
                 head += f'''{key} = {self.local_variable[key][1]};
     '''
-        if self.ft == 1:
-            for i in range(max(1, global_tensor_shape[dim_] // (global_tensor_shape[dim_] // WorkerFFTSize * threadblock_bs))):
-                head += f'''
-    {self.rPtr_2}[{i}] = *(checksum_DFT + {global_tensor_shape[dim_]} - 2 + tx + {i * num_thread});
-    {self.shPtr}[tx + {i * num_thread}] = {self.rPtr_2}[{i}];
-    '''
-        if self.ft == 1:
-            head += f'''
-    __syncthreads();
-    tmp_1.x = 0;
-    tmp_1.y = 0;
-    tmp_2.x = 0;
-    tmp_2.y = 0;
-    tmp_3.x = 0;
-    tmp_3.y = 0;
-    '''
-            for i in range(WorkerFFTSize):
-                head += f'''
-    {self.rPtr_2}[{i}] = *({self.shPtr} +  tx / {threadblock_bs} + {i * (global_tensor_shape[dim_] // WorkerFFTSize)});
-    {self.rPtr_3}[{i}].x = 0; {self.rPtr_3}[{i}].y = 0;
-    {self.rPtr_4}[{i}].x = 0; {self.rPtr_4}[{i}].y = 0;
-    '''
     
         head += f'''
-    __syncthreads();
     int bid = 0;
-    for(bid = (blockIdx.x / tb_gap) * tb_gap * thread_bs + blockIdx.x % tb_gap;
-                bid_cnt < thread_bs && bid < ({N} * BS + {Ni * threadblock_bs} - 1) / {Ni * threadblock_bs}; bid += delta_bid)
-    '''
-        head += '''{
-    bid_cnt += 1;
     '''
         return head
     
     def epilogue(self, ):
         epilogue = '''
-    }
-    
 }
 '''
         return epilogue
@@ -290,16 +244,20 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
         T = int(global_tensor_shape[dim] / WorkerFFTSize)
         num_thread = (global_tensor_shape[dim] // WorkerFFTSize * threadblock_bs)
         globalAccess_code = f'''        
-    bx = bid;
+    bx = blockIdx.x;
     tx = threadIdx.x;
     ''' 
         if if_output is False:
-            globalAccess_code += f'''
-            {self.gPtr} = {self.local_variable[self.gPtr][1]};
-    '''
+            pass
         else:
             globalAccess_code += f'''{self.gPtr} = outputs;
     '''
+        globalAccess_code += f'''
+        {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
+    
+    {self.gPtr} += (blockIdx.x * threadblock_bs + threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
+    
+'''
         if if_twiddle:
             globalAccess_code += '''global_j = 0;
     global_k = 0;
@@ -319,36 +277,8 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
     '''    
             if i == dim:
                 if not if_to_shared:
-                    
-                    globalAccess_code += f'''
-    {self.gPtr} += tx / {threadblock_bs} * {stride};
-    '''
                     access_stride = global_tensor_shape[i] // WorkerFFTSize * stride
-                    
-                else:
-                    globalAccess_code += f'''
-    {self.gPtr} += tx % {global_tensor_shape[i]} * {stride};
-    shared_offset_data = tx % {global_tensor_shape[i]}; 
-    '''         
-      
-            globalAccess_code += f'''
-    {self.gPtr} += (bx % {global_tensor_shape[i] // threadblock_tensor_shape[i]}) * {threadblock_tensor_shape[i]} * {stride};
-    bx = bx / {global_tensor_shape[i] // threadblock_tensor_shape[i]};
-    '''
-            if i == threadblock_bs_dim:
-                if not if_to_shared:
-                    globalAccess_code += f'''
-    {self.gPtr} += tx % {threadblock_bs} * {stride};
-    '''
-                else:
-                    globalAccess_code += f'''
-    shared_offset_bs = tx / {global_tensor_shape[dim]}; 
-    {self.gPtr} += tx / {global_tensor_shape[dim]} * {stride};
-    '''         
 
-        globalAccess_code += f'''
-    {self.gPtr} += (bx % BS * {th.prod(global_tensor_shape[:-1])});
-    '''
         if if_twiddle:
             globalAccess_code += f'''
     global_k += tx / {threadblock_bs};
@@ -360,28 +290,8 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
                     if not if_correction:
                         globalAccess_code += f'''
         {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
-        {self.rPtr_3}[{i}].x += {self.rPtr}[{i}].x;
-        {self.rPtr_3}[{i}].y += {self.rPtr}[{i}].y;
-        '''
-                        if self.ft == 1 and not if_correction:
-                            globalAccess_code += f'''
-        turboFFT_ZMUL{'_THREAD_FT' if self.if_thread_ft else ''}(tmp, {self.rPtr}[{i}], {self.rPtr_2}[{i}])
-        tmp_1.x += (tmp.x + tmp.y);
-        tmp_3.x += bid_cnt * (tmp.x + tmp.y);
-        '''
-                    else:
-                        globalAccess_code += f'''
-        // {self.rPtr}[{i}] = {self.rPtr_3}[{i}];
-        {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
         '''
                 else:
-                    if self.ft == 1 and not if_correction:
-                        globalAccess_code += f'''
-        // 1's vector
-        turboFFT_ZMUL{'_THREAD_FT' if self.if_thread_ft else ''}(tmp, {self.rPtr}[{dict_output[i]}],r[({i * (global_tensor_shape[dim] // WorkerFFTSize)} + tx / {threadblock_bs}) % 3])
-        tmp_1.y -= (tmp.x + tmp.y);
-        tmp_3.y -= (tmp.y + tmp.x) * bid_cnt;
-        '''
                     if if_twiddle:
                         N = th.prod(global_tensor_shape[:(dim + 1)])
                         if i == 0:
@@ -404,99 +314,12 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
             tmp = {self.rPtr}[{dict_output[i]}];
             turboFFT_ZMUL{'_THREAD_FT' if self.if_thread_ft else ''}({self.rPtr}[{dict_output[i]}], tmp, angle);
             '''
-                    if if_correction:
-                        globalAccess_code += f'''
-            // turboFFT_ZSUB({self.rPtr}[{dict_output[i]}], {self.rPtr}[{dict_output[i]}], {self.rPtr_4}[{i}]);
-            '''
-            # e=1's vector
-            if self.ft == 1 and not if_output and not if_correction:
-                globalAccess_code += f'''
-        // tmp_3.x += bid_cnt * ({self.rPtr}[0].x + {self.rPtr}[0].y) * {global_tensor_shape[dim]};
-        '''
-            # if self.ft == 1 and self.if_err_injection and not if_output and len(self.fft_code) == len(self.shared_mem_size) - 1 and not if_correction:
-            # if self.ft == 1 and self.if_err_injection and not if_output and not if_correction:
-            if self.ft == 1 and self.if_err_injection and not if_output and (dim == 0 or self.if_special) and not if_correction:
-                globalAccess_code += f'''
-        {self.rPtr}[0].x += (threadIdx.x == 0 && bid_cnt == (blockIdx.x % thread_bs + 1)) ? {self.err_inj}: 0;
-        '''
 
         for i in range(WorkerFFTSize):
             if if_output:
                 globalAccess_code += f'''
             *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
             '''               
-        if self.ft == 1 and if_output and not if_correction:
-            globalAccess_code += f'''
-        if(bid_cnt==thread_bs)
-        '''
-            globalAccess_code += '''
-        {
-        '''
-            globalAccess_code += f'''
-        // 1's vector
-        // tmp.x = (tx / {threadblock_bs} == 0) ? ({self.rPtr_3}[0].y + {self.rPtr_3}[0].x) * {global_tensor_shape[dim]}: 0;
-        // tmp.y = (tx / {threadblock_bs} == 0) ? (abs({self.rPtr_3}[0].y) + abs({self.rPtr_3}[0].x)) * {global_tensor_shape[dim]}: 0;
-        tmp = tmp_1;
-        tmp_1.y += tmp.x;
-        tmp_1.x = (abs(tmp.y) + abs(tmp.x));
-        
-        // 1's vector
-        // tmp.x = (tx / {threadblock_bs} == 0) ? tmp_3.x : 0;
-        tmp.x = tmp_3.x;
-        tmp_3.y = tmp.x + tmp_3.y;
-        tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 16, 32);
-        tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 8, 32);
-        tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 4, 32);
-        tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 2, 32);
-        tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, 1, 32);
-        
-        tmp_3.y += __shfl_xor_sync(0xffffffff, tmp_3.y, 16, 32);
-        tmp_3.y += __shfl_xor_sync(0xffffffff, tmp_3.y, 8, 32);
-        tmp_3.y += __shfl_xor_sync(0xffffffff, tmp_3.y, 4, 32);
-        tmp_3.y += __shfl_xor_sync(0xffffffff, tmp_3.y, 2, 32);
-        tmp_3.y += __shfl_xor_sync(0xffffffff, tmp_3.y, 1, 32);
-
-         // ToDo: can be optimized __shfl_sync
-         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 16, 32);
-         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 8, 32);
-         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 4, 32);
-         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 2, 32);
-         tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, 1, 32);
-        __syncthreads();
-        {self.shPtr}[(tx / 32) * 2] = tmp_1;
-        {self.shPtr}[(tx / 32) * 2 + 1] = tmp_3;
-        __syncthreads();
-        '''
-            globalAccess_code += f'''
-            tmp_1 = {self.shPtr}[(tx % {max(1, num_thread // 32)}) * 2];
-            tmp_3 = {self.shPtr}[(tx % {max(1, num_thread // 32)}) * 2 + 1];
-        '''
-            i = num_thread // 32
-            while( i > 1):
-                i //= 2
-                globalAccess_code += f'''
-                tmp_1.y += __shfl_xor_sync(0xffffffff, tmp_1.y, {i}, 32);
-                tmp_1.x += __shfl_xor_sync(0xffffffff, tmp_1.x, {i}, 32);
-                tmp_3.y += __shfl_xor_sync(0xffffffff, tmp_3.y, {i}, 32);
-        '''
-            globalAccess_code  += f'''
-            // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
-            // if(abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
-            // if(tx == 0)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            // if(tx == 0 && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > 1e-3)printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            // if((blockIdx.x % thread_bs + 1) != round(abs(tmp_3.y) / abs(tmp_1.y)) && abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} )  printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: checksum=%f, delta=%f, rel=%f, delta_3=%f, delta_3/delta=%f\\n",
-            //                                         bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x, tmp_3.y, tmp_3.y / tmp_1.y);
-            // if(abs(tmp_1.y / tmp_1.x) > {self.err_threshold})printf("{len(self.fft_code)}, bid=%d bx=%d, by=%d, tx=%d: %f, %f, %f\\n", bid, blockIdx.x, blockIdx.y, threadIdx.x, tmp_1.x, tmp_1.y, tmp_1.y / tmp_1.x);
-            // k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? bid : k;
-            k = abs(tmp_1.y) / ({self.err_smoothing} + abs(tmp_1.x)) > {self.err_threshold} ? round(abs(tmp_3.y) / abs(tmp_1.y)) : k;
-            // k = abs(tmp_1.y) > 10 ? bid : k;
-            // if(tx == 0) *({self.gPtr}) = tmp_1;
-            // if(tx == 0 && abs(tmp_1.y / tmp_1.x) > 1e-3)
-            '''
-            globalAccess_code += '''
-            }
-            // }            
-            '''
         return globalAccess_code
 
     def list_reverse(self, list_, st, end):
@@ -594,10 +417,6 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
         print("reg2shared", self.global_tensor_shape, threadblock_tensor_shape, dim)
         
-        for output_id in range(WorkerFFTSize): 
-            reg2shared_code += f'''
-            {self.rPtr_3}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
-    '''
         
         for output_id in range(WorkerFFTSize): 
             # print(output_id, dict_output[output_id])
@@ -619,10 +438,15 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
     turboFFT_ZMUL{'_THREAD_FT' if self.if_thread_ft else ''}(angle, tmp, delta_angle);
     tmp = {self.rPtr}[{dict_output[output_id]}];
     turboFFT_ZMUL{'_THREAD_FT' if self.if_thread_ft else ''}({self.rPtr}[{dict_output[output_id]}], tmp, angle);
-    '''             
+    '''      
+        for output_id in range(WorkerFFTSize): 
+            reg2shared_code += f'''
+            {self.rPtr_3}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
+    '''
+        for output_id in range(WorkerFFTSize):        
             if dim == 0 and len(self.global_tensor_shape) == 2 :
                 reg2shared_code += f'''
-    {self.shPtr}[offset + {access_stride} * ({output_id} + (threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize}] = {self.rPtr_3}[({output_id} + (threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize}];
+    {self.shPtr}[offset + {access_stride} * ({output_id} + ((threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize})] = {self.rPtr_3}[({output_id} + ((threadIdx.x / {(16 + WorkerFFTSize - 1) // WorkerFFTSize})) % {WorkerFFTSize})];
     '''
             elif dim == 1 and len(self.global_tensor_shape) == 2 :
                 reg2shared_code += f'''
