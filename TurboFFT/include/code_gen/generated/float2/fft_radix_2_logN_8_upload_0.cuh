@@ -367,171 +367,188 @@ __global__ void fft_radix_2<float2, 8, 0, 0, 0, 0>(float2* inputs, float2* outpu
     
     __syncthreads();
     
+            rPtr_3[0] = rPtr[0];
+    
+            rPtr_3[1] = rPtr[8];
+    
+            rPtr_3[2] = rPtr[4];
+    
+            rPtr_3[3] = rPtr[12];
+    
+            rPtr_3[4] = rPtr[2];
+    
+            rPtr_3[5] = rPtr[10];
+    
+            rPtr_3[6] = rPtr[6];
+    
+            rPtr_3[7] = rPtr[14];
+    
+            rPtr_3[8] = rPtr[1];
+    
+            rPtr_3[9] = rPtr[9];
+    
+            rPtr_3[10] = rPtr[5];
+    
+            rPtr_3[11] = rPtr[13];
+    
+            rPtr_3[12] = rPtr[3];
+    
+            rPtr_3[13] = rPtr[11];
+    
+            rPtr_3[14] = rPtr[7];
+    
+            rPtr_3[15] = rPtr[15];
+    
     delta_angle.x = __cosf(j * -0.02454369328916073f);
     delta_angle.y = __sinf(j * -0.02454369328916073f);
      
     angle.x = 1;
     angle.y = 0;
     
-    shPtr[offset + 1 * (0 + threadIdx.x % 16) % 16 + (0 / 16) * 16] = rPtr[0];
-    // shPtr[offset + 1 * (0 + (threadIdx.x / 1)) % 16] = rPtr[0];
+    shPtr[offset + 1 * (0 + (threadIdx.x / 1)) % 16] = rPtr_3[(0 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[8];
     turboFFT_ZMUL(rPtr[8], tmp, angle);
     
-    shPtr[offset + 1 * (1 + threadIdx.x % 16) % 16 + (1 / 16) * 16] = rPtr[8];
-    // shPtr[offset + 1 * (1 + (threadIdx.x / 1)) % 16] = rPtr[8];
+    shPtr[offset + 1 * (1 + (threadIdx.x / 1)) % 16] = rPtr_3[(1 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[4];
     turboFFT_ZMUL(rPtr[4], tmp, angle);
     
-    shPtr[offset + 1 * (2 + threadIdx.x % 16) % 16 + (2 / 16) * 16] = rPtr[4];
-    // shPtr[offset + 1 * (2 + (threadIdx.x / 1)) % 16] = rPtr[4];
+    shPtr[offset + 1 * (2 + (threadIdx.x / 1)) % 16] = rPtr_3[(2 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[12];
     turboFFT_ZMUL(rPtr[12], tmp, angle);
     
-    shPtr[offset + 1 * (3 + threadIdx.x % 16) % 16 + (3 / 16) * 16] = rPtr[12];
-    // shPtr[offset + 1 * (3 + (threadIdx.x / 1)) % 16] = rPtr[12];
+    shPtr[offset + 1 * (3 + (threadIdx.x / 1)) % 16] = rPtr_3[(3 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[2];
     turboFFT_ZMUL(rPtr[2], tmp, angle);
     
-    shPtr[offset + 1 * (4 + threadIdx.x % 16) % 16 + (4 / 16) * 16] = rPtr[2];
-    // shPtr[offset + 1 * (4 + (threadIdx.x / 1)) % 16] = rPtr[2];
+    shPtr[offset + 1 * (4 + (threadIdx.x / 1)) % 16] = rPtr_3[(4 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[10];
     turboFFT_ZMUL(rPtr[10], tmp, angle);
     
-    shPtr[offset + 1 * (5 + threadIdx.x % 16) % 16 + (5 / 16) * 16] = rPtr[10];
-    // shPtr[offset + 1 * (5 + (threadIdx.x / 1)) % 16] = rPtr[10];
+    shPtr[offset + 1 * (5 + (threadIdx.x / 1)) % 16] = rPtr_3[(5 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[6];
     turboFFT_ZMUL(rPtr[6], tmp, angle);
     
-    shPtr[offset + 1 * (6 + threadIdx.x % 16) % 16 + (6 / 16) * 16] = rPtr[6];
-    // shPtr[offset + 1 * (6 + (threadIdx.x / 1)) % 16] = rPtr[6];
+    shPtr[offset + 1 * (6 + (threadIdx.x / 1)) % 16] = rPtr_3[(6 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[14];
     turboFFT_ZMUL(rPtr[14], tmp, angle);
     
-    shPtr[offset + 1 * (7 + threadIdx.x % 16) % 16 + (7 / 16) * 16] = rPtr[14];
-    // shPtr[offset + 1 * (7 + (threadIdx.x / 1)) % 16] = rPtr[14];
+    shPtr[offset + 1 * (7 + (threadIdx.x / 1)) % 16] = rPtr_3[(7 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[1];
     turboFFT_ZMUL(rPtr[1], tmp, angle);
     
-    shPtr[offset + 1 * (8 + threadIdx.x % 16) % 16 + (8 / 16) * 16] = rPtr[1];
-    // shPtr[offset + 1 * (8 + (threadIdx.x / 1)) % 16] = rPtr[1];
+    shPtr[offset + 1 * (8 + (threadIdx.x / 1)) % 16] = rPtr_3[(8 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[9];
     turboFFT_ZMUL(rPtr[9], tmp, angle);
     
-    shPtr[offset + 1 * (9 + threadIdx.x % 16) % 16 + (9 / 16) * 16] = rPtr[9];
-    // shPtr[offset + 1 * (9 + (threadIdx.x / 1)) % 16] = rPtr[9];
+    shPtr[offset + 1 * (9 + (threadIdx.x / 1)) % 16] = rPtr_3[(9 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[5];
     turboFFT_ZMUL(rPtr[5], tmp, angle);
     
-    shPtr[offset + 1 * (10 + threadIdx.x % 16) % 16 + (10 / 16) * 16] = rPtr[5];
-    // shPtr[offset + 1 * (10 + (threadIdx.x / 1)) % 16] = rPtr[5];
+    shPtr[offset + 1 * (10 + (threadIdx.x / 1)) % 16] = rPtr_3[(10 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[13];
     turboFFT_ZMUL(rPtr[13], tmp, angle);
     
-    shPtr[offset + 1 * (11 + threadIdx.x % 16) % 16 + (11 / 16) * 16] = rPtr[13];
-    // shPtr[offset + 1 * (11 + (threadIdx.x / 1)) % 16] = rPtr[13];
+    shPtr[offset + 1 * (11 + (threadIdx.x / 1)) % 16] = rPtr_3[(11 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[3];
     turboFFT_ZMUL(rPtr[3], tmp, angle);
     
-    shPtr[offset + 1 * (12 + threadIdx.x % 16) % 16 + (12 / 16) * 16] = rPtr[3];
-    // shPtr[offset + 1 * (12 + (threadIdx.x / 1)) % 16] = rPtr[3];
+    shPtr[offset + 1 * (12 + (threadIdx.x / 1)) % 16] = rPtr_3[(12 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[11];
     turboFFT_ZMUL(rPtr[11], tmp, angle);
     
-    shPtr[offset + 1 * (13 + threadIdx.x % 16) % 16 + (13 / 16) * 16] = rPtr[11];
-    // shPtr[offset + 1 * (13 + (threadIdx.x / 1)) % 16] = rPtr[11];
+    shPtr[offset + 1 * (13 + (threadIdx.x / 1)) % 16] = rPtr_3[(13 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[7];
     turboFFT_ZMUL(rPtr[7], tmp, angle);
     
-    shPtr[offset + 1 * (14 + threadIdx.x % 16) % 16 + (14 / 16) * 16] = rPtr[7];
-    // shPtr[offset + 1 * (14 + (threadIdx.x / 1)) % 16] = rPtr[7];
+    shPtr[offset + 1 * (14 + (threadIdx.x / 1)) % 16] = rPtr_3[(14 + (threadIdx.x / 1)) % 16];
     
     tmp = angle;
     turboFFT_ZMUL(angle, tmp, delta_angle);
     tmp = rPtr[15];
     turboFFT_ZMUL(rPtr[15], tmp, angle);
     
-    shPtr[offset + 1 * (15 + threadIdx.x % 16) % 16 + (15 / 16) * 16] = rPtr[15];
-    // shPtr[offset + 1 * (15 + (threadIdx.x / 1)) % 16] = rPtr[15];
+    shPtr[offset + 1 * (15 + (threadIdx.x / 1)) % 16] = rPtr_3[(15 + (threadIdx.x / 1)) % 16];
     
     offset = 0;
+    offset += tx % 16 + tx / 16 * 256;
     
     __syncthreads();
     
-        rPtr[0] = shPtr[0 + (tx / 16) * 16 + (tx + 0) % 16];
-        
-        rPtr[1] = shPtr[16 + (tx / 16) * 16 + (tx + 1) % 16];
-        
-        rPtr[2] = shPtr[32 + (tx / 16) * 16 + (tx + 2) % 16];
-        
-        rPtr[3] = shPtr[48 + (tx / 16) * 16 + (tx + 3) % 16];
-        
-        rPtr[4] = shPtr[64 + (tx / 16) * 16 + (tx + 4) % 16];
-        
-        rPtr[5] = shPtr[80 + (tx / 16) * 16 + (tx + 5) % 16];
-        
-        rPtr[6] = shPtr[96 + (tx / 16) * 16 + (tx + 6) % 16];
-        
-        rPtr[7] = shPtr[112 + (tx / 16) * 16 + (tx + 7) % 16];
-        
-        rPtr[8] = shPtr[128 + (tx / 16) * 16 + (tx + 8) % 16];
-        
-        rPtr[9] = shPtr[144 + (tx / 16) * 16 + (tx + 9) % 16];
-        
-        rPtr[10] = shPtr[160 + (tx / 16) * 16 + (tx + 10) % 16];
-        
-        rPtr[11] = shPtr[176 + (tx / 16) * 16 + (tx + 11) % 16];
-        
-        rPtr[12] = shPtr[192 + (tx / 16) * 16 + (tx + 12) % 16];
-        
-        rPtr[13] = shPtr[208 + (tx / 16) * 16 + (tx + 13) % 16];
-        
-        rPtr[14] = shPtr[224 + (tx / 16) * 16 + (tx + 14) % 16];
-        
-        rPtr[15] = shPtr[240 + (tx / 16) * 16 + (tx + 15) % 16];
-        
+    rPtr[0] = shPtr[offset + 0];
+    
+    rPtr[1] = shPtr[offset + 16];
+    
+    rPtr[2] = shPtr[offset + 32];
+    
+    rPtr[3] = shPtr[offset + 48];
+    
+    rPtr[4] = shPtr[offset + 64];
+    
+    rPtr[5] = shPtr[offset + 80];
+    
+    rPtr[6] = shPtr[offset + 96];
+    
+    rPtr[7] = shPtr[offset + 112];
+    
+    rPtr[8] = shPtr[offset + 128];
+    
+    rPtr[9] = shPtr[offset + 144];
+    
+    rPtr[10] = shPtr[offset + 160];
+    
+    rPtr[11] = shPtr[offset + 176];
+    
+    rPtr[12] = shPtr[offset + 192];
+    
+    rPtr[13] = shPtr[offset + 208];
+    
+    rPtr[14] = shPtr[offset + 224];
+    
+    rPtr[15] = shPtr[offset + 240];
+    
     tmp = rPtr[0];
     turboFFT_ZADD(rPtr[0], tmp, rPtr[8]);
     turboFFT_ZSUB(rPtr[8], tmp, rPtr[8]);

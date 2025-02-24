@@ -526,7 +526,7 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
         # if dim == 1 and len(self.global_tensor_shape) == 2 :
         shared2reg_code += f'''
     offset = 0;
-    offset += tx % {th.prod(threadblock_tensor_shape) // WorkerFFTSize} + tx / {th.prod(threadblock_tensor_shape) // WorkerFFTSize} * {th.prod(threadblock_tensor_shape)};
+    offset += tx % {th.prod(th.as_tensor(threadblock_tensor_shape)) // WorkerFFTSize} + tx / {th.prod(th.as_tensor(threadblock_tensor_shape)) // WorkerFFTSize} * {th.prod(th.as_tensor(threadblock_tensor_shape))};
     '''
         
         shared2reg_code += '''
@@ -600,10 +600,10 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
     '''
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
         print("reg2shared", self.global_tensor_shape, threadblock_tensor_shape, dim)
-        if dim == 0 and len(self.global_tensor_shape) == 2 :
-            for output_id in range(WorkerFFTSize): 
-                reg2shared_code += f'''
-                {self.rPtr_3}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
+        
+        for output_id in range(WorkerFFTSize): 
+            reg2shared_code += f'''
+            {self.rPtr_3}[{output_id}] = {self.rPtr}[{dict_output[output_id]}];
     '''
         
         for output_id in range(WorkerFFTSize): 

@@ -196,6 +196,22 @@ __global__ void fft_radix_2<float2, 6, 0, 0, 0, 0>(float2* inputs, float2* outpu
     
     __syncthreads();
     
+            rPtr_3[0] = rPtr[0];
+    
+            rPtr_3[1] = rPtr[4];
+    
+            rPtr_3[2] = rPtr[2];
+    
+            rPtr_3[3] = rPtr[6];
+    
+            rPtr_3[4] = rPtr[1];
+    
+            rPtr_3[5] = rPtr[5];
+    
+            rPtr_3[6] = rPtr[3];
+    
+            rPtr_3[7] = rPtr[7];
+    
     delta_angle.x = __cosf(j * -0.09817477315664291f);
     delta_angle.y = __sinf(j * -0.09817477315664291f);
      
@@ -254,7 +270,7 @@ __global__ void fft_radix_2<float2, 6, 0, 0, 0, 0>(float2* inputs, float2* outpu
     shPtr[offset + 14] = rPtr[7];
     
     offset = 0;
-    offset += tx;
+    offset += tx % 8 + tx / 8 * 64;
     
     __syncthreads();
     
