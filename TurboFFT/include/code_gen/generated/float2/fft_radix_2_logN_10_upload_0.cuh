@@ -300,13 +300,15 @@ __global__ void fft_10(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     j = 0;
     offset  = 0;
     
-    offset += ((tx / 1) % 1) * 1;
+    offset += ((threadIdx.x / 1) % 1) * 1;
     
-    j = tx / 1;
+    j = (threadIdx.x % 64) / 1;
     
-    offset += ((tx / 1) % 4) * 16;
+    offset += ((threadIdx.x / 1) % 4) * 16;
     
-    offset += ((tx / 4) % 16) * 64;
+    offset += ((threadIdx.x / 4) % 16) * 64;
+    
+    offset += (threadIdx.x / 64) * 1024;
     
     __syncthreads();
     
@@ -423,37 +425,85 @@ __global__ void fft_10(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     
             rPtr_3[15] = rPtr[15];
     
-    shPtr[offset + 1 * (0 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(0 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((0 + (threadIdx.x / 1)) % 16)] = rPtr_3[((0 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((0 + (threadIdx.x / 1)) % 16)] = rPtr_3[0];
+     // shPtr[offset + 0] = rPtr[0];
+    //  shPtr[offset + 0] = rPtr_3[0];
     
-    shPtr[offset + 1 * (1 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(1 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((1 + (threadIdx.x / 1)) % 16)] = rPtr_3[((1 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((1 + (threadIdx.x / 1)) % 16)] = rPtr_3[1];
+     // shPtr[offset + 1] = rPtr[8];
+    //  shPtr[offset + 1] = rPtr_3[1];
     
-    shPtr[offset + 1 * (2 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(2 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((2 + (threadIdx.x / 1)) % 16)] = rPtr_3[((2 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((2 + (threadIdx.x / 1)) % 16)] = rPtr_3[2];
+     // shPtr[offset + 2] = rPtr[4];
+    //  shPtr[offset + 2] = rPtr_3[2];
     
-    shPtr[offset + 1 * (3 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(3 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((3 + (threadIdx.x / 1)) % 16)] = rPtr_3[((3 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((3 + (threadIdx.x / 1)) % 16)] = rPtr_3[3];
+     // shPtr[offset + 3] = rPtr[12];
+    //  shPtr[offset + 3] = rPtr_3[3];
     
-    shPtr[offset + 1 * (4 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(4 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((4 + (threadIdx.x / 1)) % 16)] = rPtr_3[((4 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((4 + (threadIdx.x / 1)) % 16)] = rPtr_3[4];
+     // shPtr[offset + 4] = rPtr[2];
+    //  shPtr[offset + 4] = rPtr_3[4];
     
-    shPtr[offset + 1 * (5 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(5 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((5 + (threadIdx.x / 1)) % 16)] = rPtr_3[((5 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((5 + (threadIdx.x / 1)) % 16)] = rPtr_3[5];
+     // shPtr[offset + 5] = rPtr[10];
+    //  shPtr[offset + 5] = rPtr_3[5];
     
-    shPtr[offset + 1 * (6 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(6 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((6 + (threadIdx.x / 1)) % 16)] = rPtr_3[((6 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((6 + (threadIdx.x / 1)) % 16)] = rPtr_3[6];
+     // shPtr[offset + 6] = rPtr[6];
+    //  shPtr[offset + 6] = rPtr_3[6];
     
-    shPtr[offset + 1 * (7 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(7 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((7 + (threadIdx.x / 1)) % 16)] = rPtr_3[((7 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((7 + (threadIdx.x / 1)) % 16)] = rPtr_3[7];
+     // shPtr[offset + 7] = rPtr[14];
+    //  shPtr[offset + 7] = rPtr_3[7];
     
-    shPtr[offset + 1 * (8 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(8 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((8 + (threadIdx.x / 1)) % 16)] = rPtr_3[((8 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((8 + (threadIdx.x / 1)) % 16)] = rPtr_3[8];
+     // shPtr[offset + 8] = rPtr[1];
+    //  shPtr[offset + 8] = rPtr_3[8];
     
-    shPtr[offset + 1 * (9 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(9 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((9 + (threadIdx.x / 1)) % 16)] = rPtr_3[((9 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((9 + (threadIdx.x / 1)) % 16)] = rPtr_3[9];
+     // shPtr[offset + 9] = rPtr[9];
+    //  shPtr[offset + 9] = rPtr_3[9];
     
-    shPtr[offset + 1 * (10 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(10 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((10 + (threadIdx.x / 1)) % 16)] = rPtr_3[((10 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((10 + (threadIdx.x / 1)) % 16)] = rPtr_3[10];
+     // shPtr[offset + 10] = rPtr[5];
+    //  shPtr[offset + 10] = rPtr_3[10];
     
-    shPtr[offset + 1 * (11 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(11 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((11 + (threadIdx.x / 1)) % 16)] = rPtr_3[((11 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((11 + (threadIdx.x / 1)) % 16)] = rPtr_3[11];
+     // shPtr[offset + 11] = rPtr[13];
+    //  shPtr[offset + 11] = rPtr_3[11];
     
-    shPtr[offset + 1 * (12 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(12 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((12 + (threadIdx.x / 1)) % 16)] = rPtr_3[((12 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((12 + (threadIdx.x / 1)) % 16)] = rPtr_3[12];
+     // shPtr[offset + 12] = rPtr[3];
+    //  shPtr[offset + 12] = rPtr_3[12];
     
-    shPtr[offset + 1 * (13 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(13 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((13 + (threadIdx.x / 1)) % 16)] = rPtr_3[((13 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((13 + (threadIdx.x / 1)) % 16)] = rPtr_3[13];
+     // shPtr[offset + 13] = rPtr[11];
+    //  shPtr[offset + 13] = rPtr_3[13];
     
-    shPtr[offset + 1 * (14 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(14 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((14 + (threadIdx.x / 1)) % 16)] = rPtr_3[((14 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((14 + (threadIdx.x / 1)) % 16)] = rPtr_3[14];
+     // shPtr[offset + 14] = rPtr[7];
+    //  shPtr[offset + 14] = rPtr_3[14];
     
-    shPtr[offset + 1 * (15 + ((threadIdx.x / 1)) % 16)] = rPtr_3[(15 + ((threadIdx.x / 1)) % 16)];
+    shPtr[offset + 1 * ((15 + (threadIdx.x / 1)) % 16)] = rPtr_3[((15 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 1 * ((15 + (threadIdx.x / 1)) % 16)] = rPtr_3[15];
+     // shPtr[offset + 15] = rPtr[15];
+    //  shPtr[offset + 15] = rPtr_3[15];
     
     offset = 0;
     offset += tx % 64 + tx / 64 * 1024;
@@ -716,13 +766,15 @@ __global__ void fft_10(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     j = 0;
     offset  = 0;
     
-    offset += ((tx / 1) % 1) * 1;
+    offset += ((threadIdx.x / 1) % 1) * 1;
     
-    offset += ((tx / 1) % 16) * 1;
+    offset += ((threadIdx.x / 1) % 16) * 1;
     
-    j = tx / 16;
+    j = (threadIdx.x % 64) / 16;
     
-    offset += ((tx / 16) % 4) * 256;
+    offset += ((threadIdx.x / 16) % 4) * 256;
+    
+    offset += (threadIdx.x / 64) * 1024;
     
     __syncthreads();
     
@@ -839,37 +891,85 @@ __global__ void fft_10(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     
             rPtr_3[15] = rPtr[15];
     
-    shPtr[offset + 16 * (0 + (threadIdx.x / 16)) % 16] = rPtr_3[(0 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((0 + (threadIdx.x / 1)) % 16)] = rPtr_3[((0 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((0 + (threadIdx.x / 1)) % 16)] = rPtr_3[0];
+     // shPtr[offset + 0] = rPtr[0];
+     // shPtr[offset + 0] = rPtr_3[0];
     
-    shPtr[offset + 16 * (1 + (threadIdx.x / 16)) % 16] = rPtr_3[(1 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((1 + (threadIdx.x / 1)) % 16)] = rPtr_3[((1 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((1 + (threadIdx.x / 1)) % 16)] = rPtr_3[1];
+     // shPtr[offset + 16] = rPtr[8];
+     // shPtr[offset + 16] = rPtr_3[1];
     
-    shPtr[offset + 16 * (2 + (threadIdx.x / 16)) % 16] = rPtr_3[(2 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((2 + (threadIdx.x / 1)) % 16)] = rPtr_3[((2 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((2 + (threadIdx.x / 1)) % 16)] = rPtr_3[2];
+     // shPtr[offset + 32] = rPtr[4];
+     // shPtr[offset + 32] = rPtr_3[2];
     
-    shPtr[offset + 16 * (3 + (threadIdx.x / 16)) % 16] = rPtr_3[(3 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((3 + (threadIdx.x / 1)) % 16)] = rPtr_3[((3 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((3 + (threadIdx.x / 1)) % 16)] = rPtr_3[3];
+     // shPtr[offset + 48] = rPtr[12];
+     // shPtr[offset + 48] = rPtr_3[3];
     
-    shPtr[offset + 16 * (4 + (threadIdx.x / 16)) % 16] = rPtr_3[(4 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((4 + (threadIdx.x / 1)) % 16)] = rPtr_3[((4 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((4 + (threadIdx.x / 1)) % 16)] = rPtr_3[4];
+     // shPtr[offset + 64] = rPtr[2];
+     // shPtr[offset + 64] = rPtr_3[4];
     
-    shPtr[offset + 16 * (5 + (threadIdx.x / 16)) % 16] = rPtr_3[(5 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((5 + (threadIdx.x / 1)) % 16)] = rPtr_3[((5 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((5 + (threadIdx.x / 1)) % 16)] = rPtr_3[5];
+     // shPtr[offset + 80] = rPtr[10];
+     // shPtr[offset + 80] = rPtr_3[5];
     
-    shPtr[offset + 16 * (6 + (threadIdx.x / 16)) % 16] = rPtr_3[(6 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((6 + (threadIdx.x / 1)) % 16)] = rPtr_3[((6 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((6 + (threadIdx.x / 1)) % 16)] = rPtr_3[6];
+     // shPtr[offset + 96] = rPtr[6];
+     // shPtr[offset + 96] = rPtr_3[6];
     
-    shPtr[offset + 16 * (7 + (threadIdx.x / 16)) % 16] = rPtr_3[(7 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((7 + (threadIdx.x / 1)) % 16)] = rPtr_3[((7 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((7 + (threadIdx.x / 1)) % 16)] = rPtr_3[7];
+     // shPtr[offset + 112] = rPtr[14];
+     // shPtr[offset + 112] = rPtr_3[7];
     
-    shPtr[offset + 16 * (8 + (threadIdx.x / 16)) % 16] = rPtr_3[(8 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((8 + (threadIdx.x / 1)) % 16)] = rPtr_3[((8 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((8 + (threadIdx.x / 1)) % 16)] = rPtr_3[8];
+     // shPtr[offset + 128] = rPtr[1];
+     // shPtr[offset + 128] = rPtr_3[8];
     
-    shPtr[offset + 16 * (9 + (threadIdx.x / 16)) % 16] = rPtr_3[(9 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((9 + (threadIdx.x / 1)) % 16)] = rPtr_3[((9 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((9 + (threadIdx.x / 1)) % 16)] = rPtr_3[9];
+     // shPtr[offset + 144] = rPtr[9];
+     // shPtr[offset + 144] = rPtr_3[9];
     
-    shPtr[offset + 16 * (10 + (threadIdx.x / 16)) % 16] = rPtr_3[(10 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((10 + (threadIdx.x / 1)) % 16)] = rPtr_3[((10 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((10 + (threadIdx.x / 1)) % 16)] = rPtr_3[10];
+     // shPtr[offset + 160] = rPtr[5];
+     // shPtr[offset + 160] = rPtr_3[10];
     
-    shPtr[offset + 16 * (11 + (threadIdx.x / 16)) % 16] = rPtr_3[(11 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((11 + (threadIdx.x / 1)) % 16)] = rPtr_3[((11 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((11 + (threadIdx.x / 1)) % 16)] = rPtr_3[11];
+     // shPtr[offset + 176] = rPtr[13];
+     // shPtr[offset + 176] = rPtr_3[11];
     
-    shPtr[offset + 16 * (12 + (threadIdx.x / 16)) % 16] = rPtr_3[(12 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((12 + (threadIdx.x / 1)) % 16)] = rPtr_3[((12 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((12 + (threadIdx.x / 1)) % 16)] = rPtr_3[12];
+     // shPtr[offset + 192] = rPtr[3];
+     // shPtr[offset + 192] = rPtr_3[12];
     
-    shPtr[offset + 16 * (13 + (threadIdx.x / 16)) % 16] = rPtr_3[(13 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((13 + (threadIdx.x / 1)) % 16)] = rPtr_3[((13 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((13 + (threadIdx.x / 1)) % 16)] = rPtr_3[13];
+     // shPtr[offset + 208] = rPtr[11];
+     // shPtr[offset + 208] = rPtr_3[13];
     
-    shPtr[offset + 16 * (14 + (threadIdx.x / 16)) % 16] = rPtr_3[(14 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((14 + (threadIdx.x / 1)) % 16)] = rPtr_3[((14 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((14 + (threadIdx.x / 1)) % 16)] = rPtr_3[14];
+     // shPtr[offset + 224] = rPtr[7];
+     // shPtr[offset + 224] = rPtr_3[14];
     
-    shPtr[offset + 16 * (15 + (threadIdx.x / 16)) % 16] = rPtr_3[(15 + (threadIdx.x / 16)) % 16];
+    shPtr[offset + 16 * ((15 + (threadIdx.x / 1)) % 16)] = rPtr_3[((15 + (threadIdx.x / 1)) % 16)];
+    // shPtr[offset + 16 * ((15 + (threadIdx.x / 1)) % 16)] = rPtr_3[15];
+     // shPtr[offset + 240] = rPtr[15];
+     // shPtr[offset + 240] = rPtr_3[15];
     
     offset = 0;
     offset += tx % 64 + tx / 64 * 1024;

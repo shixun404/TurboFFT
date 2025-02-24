@@ -140,13 +140,15 @@ __global__ void fft_7(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     j = 0;
     offset  = 0;
     
-    offset += ((tx / 1) % 1) * 1;
+    offset += ((threadIdx.x / 1) % 1) * 1;
     
-    j = tx / 1;
+    j = (threadIdx.x % 16) / 1;
     
-    offset += ((tx / 1) % 2) * 8;
+    offset += ((threadIdx.x / 1) % 2) * 8;
     
-    offset += ((tx / 2) % 8) * 16;
+    offset += ((threadIdx.x / 2) % 8) * 16;
+    
+    offset += (threadIdx.x / 16) * 128;
     
     __syncthreads();
     
@@ -207,21 +209,45 @@ __global__ void fft_7(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     
             rPtr_3[7] = rPtr[7];
     
-    shPtr[offset + 1 * (0 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(0 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((0 + (threadIdx.x / 2)) % 8)] = rPtr_3[((0 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((0 + (threadIdx.x / 2)) % 8)] = rPtr_3[0];
+     // shPtr[offset + 0] = rPtr[0];
+    //  shPtr[offset + 0] = rPtr_3[0];
     
-    shPtr[offset + 1 * (1 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(1 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((1 + (threadIdx.x / 2)) % 8)] = rPtr_3[((1 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((1 + (threadIdx.x / 2)) % 8)] = rPtr_3[1];
+     // shPtr[offset + 1] = rPtr[4];
+    //  shPtr[offset + 1] = rPtr_3[1];
     
-    shPtr[offset + 1 * (2 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(2 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((2 + (threadIdx.x / 2)) % 8)] = rPtr_3[((2 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((2 + (threadIdx.x / 2)) % 8)] = rPtr_3[2];
+     // shPtr[offset + 2] = rPtr[2];
+    //  shPtr[offset + 2] = rPtr_3[2];
     
-    shPtr[offset + 1 * (3 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(3 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((3 + (threadIdx.x / 2)) % 8)] = rPtr_3[((3 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((3 + (threadIdx.x / 2)) % 8)] = rPtr_3[3];
+     // shPtr[offset + 3] = rPtr[6];
+    //  shPtr[offset + 3] = rPtr_3[3];
     
-    shPtr[offset + 1 * (4 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(4 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((4 + (threadIdx.x / 2)) % 8)] = rPtr_3[((4 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((4 + (threadIdx.x / 2)) % 8)] = rPtr_3[4];
+     // shPtr[offset + 4] = rPtr[1];
+    //  shPtr[offset + 4] = rPtr_3[4];
     
-    shPtr[offset + 1 * (5 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(5 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((5 + (threadIdx.x / 2)) % 8)] = rPtr_3[((5 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((5 + (threadIdx.x / 2)) % 8)] = rPtr_3[5];
+     // shPtr[offset + 5] = rPtr[5];
+    //  shPtr[offset + 5] = rPtr_3[5];
     
-    shPtr[offset + 1 * (6 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(6 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((6 + (threadIdx.x / 2)) % 8)] = rPtr_3[((6 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((6 + (threadIdx.x / 2)) % 8)] = rPtr_3[6];
+     // shPtr[offset + 6] = rPtr[3];
+    //  shPtr[offset + 6] = rPtr_3[6];
     
-    shPtr[offset + 1 * (7 + ((threadIdx.x / 2)) % 8)] = rPtr_3[(7 + ((threadIdx.x / 2)) % 8)];
+    shPtr[offset + 1 * ((7 + (threadIdx.x / 2)) % 8)] = rPtr_3[((7 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 1 * ((7 + (threadIdx.x / 2)) % 8)] = rPtr_3[7];
+     // shPtr[offset + 7] = rPtr[7];
+    //  shPtr[offset + 7] = rPtr_3[7];
     
     offset = 0;
     offset += tx % 16 + tx / 16 * 128;
@@ -324,13 +350,15 @@ __global__ void fft_7(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     j = 0;
     offset  = 0;
     
-    offset += ((tx / 1) % 1) * 1;
+    offset += ((threadIdx.x / 1) % 1) * 1;
     
-    offset += ((tx / 1) % 8) * 1;
+    offset += ((threadIdx.x / 1) % 8) * 1;
     
-    j = tx / 8;
+    j = (threadIdx.x % 16) / 8;
     
-    offset += ((tx / 8) % 2) * 64;
+    offset += ((threadIdx.x / 8) % 2) * 64;
+    
+    offset += (threadIdx.x / 16) * 128;
     
     __syncthreads();
     
@@ -391,21 +419,45 @@ __global__ void fft_7(float2* gPtr_1, float2* outputs, int threadblock_bs) {
     
             rPtr_3[7] = rPtr[7];
     
-    shPtr[offset + 8 * (0 + (threadIdx.x / 8)) % 8] = rPtr_3[(0 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((0 + (threadIdx.x / 2)) % 8)] = rPtr_3[((0 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((0 + (threadIdx.x / 2)) % 8)] = rPtr_3[0];
+     // shPtr[offset + 0] = rPtr[0];
+     // shPtr[offset + 0] = rPtr_3[0];
     
-    shPtr[offset + 8 * (1 + (threadIdx.x / 8)) % 8] = rPtr_3[(1 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((1 + (threadIdx.x / 2)) % 8)] = rPtr_3[((1 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((1 + (threadIdx.x / 2)) % 8)] = rPtr_3[1];
+     // shPtr[offset + 8] = rPtr[4];
+     // shPtr[offset + 8] = rPtr_3[1];
     
-    shPtr[offset + 8 * (2 + (threadIdx.x / 8)) % 8] = rPtr_3[(2 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((2 + (threadIdx.x / 2)) % 8)] = rPtr_3[((2 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((2 + (threadIdx.x / 2)) % 8)] = rPtr_3[2];
+     // shPtr[offset + 16] = rPtr[2];
+     // shPtr[offset + 16] = rPtr_3[2];
     
-    shPtr[offset + 8 * (3 + (threadIdx.x / 8)) % 8] = rPtr_3[(3 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((3 + (threadIdx.x / 2)) % 8)] = rPtr_3[((3 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((3 + (threadIdx.x / 2)) % 8)] = rPtr_3[3];
+     // shPtr[offset + 24] = rPtr[6];
+     // shPtr[offset + 24] = rPtr_3[3];
     
-    shPtr[offset + 8 * (4 + (threadIdx.x / 8)) % 8] = rPtr_3[(4 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((4 + (threadIdx.x / 2)) % 8)] = rPtr_3[((4 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((4 + (threadIdx.x / 2)) % 8)] = rPtr_3[4];
+     // shPtr[offset + 32] = rPtr[1];
+     // shPtr[offset + 32] = rPtr_3[4];
     
-    shPtr[offset + 8 * (5 + (threadIdx.x / 8)) % 8] = rPtr_3[(5 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((5 + (threadIdx.x / 2)) % 8)] = rPtr_3[((5 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((5 + (threadIdx.x / 2)) % 8)] = rPtr_3[5];
+     // shPtr[offset + 40] = rPtr[5];
+     // shPtr[offset + 40] = rPtr_3[5];
     
-    shPtr[offset + 8 * (6 + (threadIdx.x / 8)) % 8] = rPtr_3[(6 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((6 + (threadIdx.x / 2)) % 8)] = rPtr_3[((6 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((6 + (threadIdx.x / 2)) % 8)] = rPtr_3[6];
+     // shPtr[offset + 48] = rPtr[3];
+     // shPtr[offset + 48] = rPtr_3[6];
     
-    shPtr[offset + 8 * (7 + (threadIdx.x / 8)) % 8] = rPtr_3[(7 + (threadIdx.x / 8)) % 8];
+    shPtr[offset + 8 * ((7 + (threadIdx.x / 2)) % 8)] = rPtr_3[((7 + (threadIdx.x / 2)) % 8)];
+    // shPtr[offset + 8 * ((7 + (threadIdx.x / 2)) % 8)] = rPtr_3[7];
+     // shPtr[offset + 56] = rPtr[7];
+     // shPtr[offset + 56] = rPtr_3[7];
     
     offset = 0;
     offset += tx % 16 + tx / 16 * 128;
