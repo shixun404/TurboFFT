@@ -422,16 +422,9 @@ __global__ void fft_radix_{self.radix}<{self.data_type}, {int(log(N, self.radix)
 
         for i in range(WorkerFFTSize):
             if if_output:
-                if not if_correction:
-                    globalAccess_code += f'''
+                globalAccess_code += f'''
             *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
-            {self.rPtr_4}[{i}].x += {self.rPtr}[{dict_output[i]}].x;
-            {self.rPtr_4}[{i}].y += {self.rPtr}[{dict_output[i]}].y;
-            '''     
-                else:
-                    globalAccess_code += f'''
-            *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
-        '''                    
+            '''               
         if self.ft == 1 and if_output and not if_correction:
             globalAccess_code += f'''
         if(bid_cnt==thread_bs)

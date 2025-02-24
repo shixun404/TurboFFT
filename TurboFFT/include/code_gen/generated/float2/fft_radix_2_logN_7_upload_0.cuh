@@ -715,68 +715,36 @@ __global__ void fft_radix_2<float2, 7, 0, 0, 0, 0>(float2* inputs, float2* outpu
     gPtr += (bx % BS * 128);
     
             *(gPtr + 0) = rPtr[0];
-            rPtr_4[0].x += rPtr[0].x;
-            rPtr_4[0].y += rPtr[0].y;
             
             *(gPtr + 8) = rPtr[1];
-            rPtr_4[1].x += rPtr[1].x;
-            rPtr_4[1].y += rPtr[1].y;
             
             *(gPtr + 16) = rPtr[8];
-            rPtr_4[2].x += rPtr[8].x;
-            rPtr_4[2].y += rPtr[8].y;
             
             *(gPtr + 24) = rPtr[9];
-            rPtr_4[3].x += rPtr[9].x;
-            rPtr_4[3].y += rPtr[9].y;
             
             *(gPtr + 32) = rPtr[4];
-            rPtr_4[4].x += rPtr[4].x;
-            rPtr_4[4].y += rPtr[4].y;
             
             *(gPtr + 40) = rPtr[5];
-            rPtr_4[5].x += rPtr[5].x;
-            rPtr_4[5].y += rPtr[5].y;
             
             *(gPtr + 48) = rPtr[12];
-            rPtr_4[6].x += rPtr[12].x;
-            rPtr_4[6].y += rPtr[12].y;
             
             *(gPtr + 56) = rPtr[13];
-            rPtr_4[7].x += rPtr[13].x;
-            rPtr_4[7].y += rPtr[13].y;
             
             *(gPtr + 64) = rPtr[2];
-            rPtr_4[8].x += rPtr[2].x;
-            rPtr_4[8].y += rPtr[2].y;
             
             *(gPtr + 72) = rPtr[3];
-            rPtr_4[9].x += rPtr[3].x;
-            rPtr_4[9].y += rPtr[3].y;
             
             *(gPtr + 80) = rPtr[10];
-            rPtr_4[10].x += rPtr[10].x;
-            rPtr_4[10].y += rPtr[10].y;
             
             *(gPtr + 88) = rPtr[11];
-            rPtr_4[11].x += rPtr[11].x;
-            rPtr_4[11].y += rPtr[11].y;
             
             *(gPtr + 96) = rPtr[6];
-            rPtr_4[12].x += rPtr[6].x;
-            rPtr_4[12].y += rPtr[6].y;
             
             *(gPtr + 104) = rPtr[7];
-            rPtr_4[13].x += rPtr[7].x;
-            rPtr_4[13].y += rPtr[7].y;
             
             *(gPtr + 112) = rPtr[14];
-            rPtr_4[14].x += rPtr[14].x;
-            rPtr_4[14].y += rPtr[14].y;
             
             *(gPtr + 120) = rPtr[15];
-            rPtr_4[15].x += rPtr[15].x;
-            rPtr_4[15].y += rPtr[15].y;
             
     }
     

@@ -216,20 +216,12 @@ __global__ void fft_radix_2<float2, 4, 0, 0, 0, 0>(float2* inputs, float2* outpu
     gPtr += (bx % BS * 64);
     
             *(gPtr + 0) = rPtr[0];
-            rPtr_4[0].x += rPtr[0].x;
-            rPtr_4[0].y += rPtr[0].y;
             
             *(gPtr + 4) = rPtr[2];
-            rPtr_4[1].x += rPtr[2].x;
-            rPtr_4[1].y += rPtr[2].y;
             
             *(gPtr + 8) = rPtr[1];
-            rPtr_4[2].x += rPtr[1].x;
-            rPtr_4[2].y += rPtr[1].y;
             
             *(gPtr + 12) = rPtr[3];
-            rPtr_4[3].x += rPtr[3].x;
-            rPtr_4[3].y += rPtr[3].y;
             
     }
     
