@@ -60,7 +60,7 @@ class TurboFFT:
             "tx": ("int", "threadIdx.x"),
             "offset": ("int", "0"),
             self.gPtr: (f"{self.data_type}*", "gPtr_1"),
-            self.shPtr: (f"{self.data_type}*", "(float2*) shared_mem"),
+            self.shPtr: (f"{self.data_type}*", "(float2*)(shared_mem + (THREADBLOCK_M + THREADBLOCK_N) * THREADBLOCK_K)"),
             f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
             f"{self.rPtr_3}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
             "tmp": (self.data_type, None),
@@ -72,8 +72,8 @@ class TurboFFT:
     def save_generated_code(self, ):
         if not self.if_special:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
-            for i in range(3):
-                file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
+            for i in range(1):
+                file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}_fused.cuh"
                 if i >= len(self.global_tensor_shape) - 1:
                     with open(file_name, 'w') as f:
                         f.write("\n")
@@ -88,7 +88,7 @@ class TurboFFT:
                 
         else:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
-            for i in range(3):
+            for i in range(1):
                 if i != 0:
                     file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
                     with open(file_name, 'w') as f:
@@ -162,8 +162,8 @@ class TurboFFT:
             dim = 0
         head = f'''
 extern __shared__ float shared_mem[];
-__global__ void fft_{int(log(N, self.radix))}''' \
-        + f'''(float2* gPtr_1, float2* outputs, int threadblock_bs)''' + ''' {
+__device__ void fft_{int(log(N, self.radix))}_fused''' \
+        + f'''(float2* gPtr_1, float2* outputs, int stride)''' + ''' {
     int bid_cnt = 0;
     '''
     #     head += f'''
@@ -206,10 +206,9 @@ __global__ void fft_{int(log(N, self.radix))}''' \
         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
     
         {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * stride;
-        __syncthreads();    
 '''
         else:
-            globalAccess_code += f'''{self.gPtr} = {self.shPtr};
+            globalAccess_code += f'''{self.gPtr} = outputs;
         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
         {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
         __syncthreads();
@@ -275,17 +274,18 @@ __global__ void fft_{int(log(N, self.radix))}''' \
         #     if if_output:
         #         globalAccess_code += f'''
         #     *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
-        #     '''               
-        for i in range(WorkerFFTSize):
-            globalAccess_code += f'''
-            {self.rPtr_3}[{i}] = {self.rPtr}[{dict_output[i]}];
-    '''               
+        #     '''
+        if if_output:
+            for i in range(WorkerFFTSize):
+                globalAccess_code += f'''
+                {self.rPtr_3}[{i}] = {self.rPtr}[{dict_output[i]}];
+        '''               
 
-        globalAccess_code += f'''
-            #pragma unroll
-            for(int i = 0; i < (THREADBLOCK_M / {global_tensor_shape[dim] // WorkerFFTSize}; ++i)
-            *({self.gPtr} + i * {access_stride}) = {self.rPtr_3}[i];
-            '''               
+            globalAccess_code += f'''
+                #pragma unroll
+                for(int i = 0; i < (THREADBLOCK_M / {global_tensor_shape[dim] // WorkerFFTSize}); ++i)
+                *({self.gPtr} + i * {access_stride}) = {self.rPtr_3}[i];
+        '''                 
         return globalAccess_code
 
     def list_reverse(self, list_, st, end):

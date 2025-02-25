@@ -72,7 +72,7 @@ class TurboFFT:
     def save_generated_code(self, ):
         if not self.if_special:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-1]))
-            for i in range(3):
+            for i in range(1):
                 file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
                 if i >= len(self.global_tensor_shape) - 1:
                     with open(file_name, 'w') as f:
@@ -88,7 +88,7 @@ class TurboFFT:
                 
         else:
             N = th.prod(th.as_tensor(self.global_tensor_shape[:-2]))
-            for i in range(3):
+            for i in range(1):
                 if i != 0:
                     file_name = f"../generated/{self.data_type}/fft_radix_{self.radix}_logN_{int(log(N, 2))}_upload_{i}.cuh"
                     with open(file_name, 'w') as f:
