@@ -202,16 +202,24 @@ __global__ void fft_{int(log(N, self.radix))}''' \
     tx = threadIdx.x;
     ''' 
         if if_output is False:
-            pass
-        else:
-            globalAccess_code += f'''{self.gPtr} = outputs;
-    '''
-        globalAccess_code += f'''
+            globalAccess_code += f'''
         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
     
-    {self.gPtr} += (blockIdx.x * threadblock_bs + threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
-    
+        {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * stride;
+        __syncthreads();    
 '''
+        else:
+            globalAccess_code += f'''{self.gPtr} = {self.shPtr};
+        {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
+        {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
+        __syncthreads();
+    '''
+#         globalAccess_code += f'''
+#         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
+    
+#         {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
+#         __syncthreads();
+# '''
         if if_twiddle:
             globalAccess_code += '''global_j = 0;
     global_k = 0;
