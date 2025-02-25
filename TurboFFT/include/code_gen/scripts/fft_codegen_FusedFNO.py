@@ -214,12 +214,6 @@ __global__ void fft_{int(log(N, self.radix))}''' \
         {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
         __syncthreads();
     '''
-#         globalAccess_code += f'''
-#         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
-    
-#         {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
-#         __syncthreads();
-# '''
         if if_twiddle:
             globalAccess_code += '''global_j = 0;
     global_k = 0;
@@ -277,10 +271,20 @@ __global__ void fft_{int(log(N, self.radix))}''' \
             turboFFT_ZMUL{'_THREAD_FT' if self.if_thread_ft else ''}({self.rPtr}[{dict_output[i]}], tmp, angle);
             '''
 
+        # for i in range(WorkerFFTSize):
+        #     if if_output:
+        #         globalAccess_code += f'''
+        #     *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
+        #     '''               
         for i in range(WorkerFFTSize):
-            if if_output:
-                globalAccess_code += f'''
-            *({self.gPtr} + {i * access_stride}) = {self.rPtr}[{dict_output[i]}];
+            globalAccess_code += f'''
+            {self.rPtr_3}[{i}] = {self.rPtr}[{dict_output[i]}];
+    '''               
+
+        globalAccess_code += f'''
+            #pragma unroll
+            for(int i = 0; i < (THREADBLOCK_M / {global_tensor_shape[dim] // WorkerFFTSize}; ++i)
+            *({self.gPtr} + i * {access_stride}) = {self.rPtr_3}[i];
             '''               
         return globalAccess_code
 
