@@ -1,6 +1,6 @@
 
 extern __shared__ float shared_mem[];
-__device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
+__device__ void fft_9_fused(float2* gPtr_1, float2* outputs, float2* sFFT, int stride) {
     int bid_cnt = 0;
     int j;
     int k;
@@ -32,13 +32,16 @@ __device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
     tx = threadIdx.x;
     offset = 0;
     gPtr = gPtr_1;
-    shPtr = (float2*) shared_mem;
+    shPtr = sFFT;
     
     int bid = 0;
             
     bx = blockIdx.x;
     tx = threadIdx.x;
     
+        if(threadIdx.x < THREADBLOCK_K * 64 )
+        {
+        
         gPtr += threadIdx.x % 64;
     
         gPtr += (threadIdx.x / 64) * stride;
@@ -149,8 +152,11 @@ __device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
     
     offset += (threadIdx.x / 64) * 512;
     
+    }
     __syncthreads();
     
+    if(threadIdx.x < THREADBLOCK_K * 64 )
+    {
     delta_angle.x = __cosf(j * -0.012271846644580364f);
     delta_angle.y = __sinf(j * -0.012271846644580364f);
      
@@ -251,8 +257,11 @@ __device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
     offset = 0;
     offset += tx % 64 + tx / 64 * 512;
     
-    __syncthreads();
+    }
+    __syncthreads();    
     
+    if(threadIdx.x < THREADBLOCK_K * 64 )
+    {
     rPtr[0] = shPtr[offset + 0];
     
     rPtr[1] = shPtr[offset + 64];
@@ -359,8 +368,11 @@ __device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
     
     offset += (threadIdx.x / 64) * 512;
     
+    }
     __syncthreads();
     
+    if(threadIdx.x < THREADBLOCK_K * 64 )
+    {
     delta_angle.x = __cosf(j * -0.09817477315664291f);
     delta_angle.y = __sinf(j * -0.09817477315664291f);
      
@@ -461,8 +473,11 @@ __device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
     offset = 0;
     offset += tx % 64 + tx / 64 * 512;
     
-    __syncthreads();
+    }
+    __syncthreads();    
     
+    if(threadIdx.x < THREADBLOCK_K * 64 )
+    {
     rPtr[0] = shPtr[offset + 0];
     
     rPtr[1] = shPtr[offset + 64];
@@ -560,8 +575,7 @@ __device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
     tx = threadIdx.x;
     gPtr = outputs;
         gPtr += threadIdx.x % 64;
-        gPtr += (threadIdx.x / 64) * 512;
-        __syncthreads();
+        gPtr += (threadIdx.x / 64) * THREADBLOCK_M;
     
                 rPtr_3[0] = rPtr[0];
         
@@ -582,5 +596,5 @@ __device__ void fft_9_fused(float2* gPtr_1, float2* outputs, int stride) {
                 #pragma unroll
                 for(int i = 0; i < (THREADBLOCK_M / 64); ++i)
                 *(gPtr + i * 64) = rPtr_3[i];
-        
+        }
 }

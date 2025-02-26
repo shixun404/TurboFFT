@@ -60,7 +60,7 @@ class TurboFFT:
             "tx": ("int", "threadIdx.x"),
             "offset": ("int", "0"),
             self.gPtr: (f"{self.data_type}*", "gPtr_1"),
-            self.shPtr: (f"{self.data_type}*", "(float2*)(shared_mem + (THREADBLOCK_M + THREADBLOCK_N) * THREADBLOCK_K)"),
+            self.shPtr: (f"{self.data_type}*", "sFFT"),
             f"{self.rPtr}[{self.WorkerFFTSizes[dim]}]": (self.data_type, None),
             f"{self.rPtr_3}[{self.WorkerFFTSizes[dim] }]": (self.data_type, None),
             "tmp": (self.data_type, None),
@@ -163,7 +163,7 @@ class TurboFFT:
         head = f'''
 extern __shared__ float shared_mem[];
 __device__ void fft_{int(log(N, self.radix))}_fused''' \
-        + f'''(float2* gPtr_1, float2* outputs, int stride)''' + ''' {
+        + f'''(float2* gPtr_1, float2* outputs, float2* sFFT, int stride)''' + ''' {
     int bid_cnt = 0;
     '''
     #     head += f'''
@@ -203,6 +203,10 @@ __device__ void fft_{int(log(N, self.radix))}_fused''' \
     ''' 
         if if_output is False:
             globalAccess_code += f'''
+        if(threadIdx.x < THREADBLOCK_K * {global_tensor_shape[dim] // WorkerFFTSize} )
+        ''' + '''{'''
+            globalAccess_code += f'''
+        
         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
     
         {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * stride;
@@ -210,8 +214,7 @@ __device__ void fft_{int(log(N, self.radix))}_fused''' \
         else:
             globalAccess_code += f'''{self.gPtr} = outputs;
         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
-        {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};
-        __syncthreads();
+        {self.gPtr} += (threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * THREADBLOCK_M;
     '''
         if if_twiddle:
             globalAccess_code += '''global_j = 0;
@@ -285,7 +288,8 @@ __device__ void fft_{int(log(N, self.radix))}_fused''' \
                 #pragma unroll
                 for(int i = 0; i < (THREADBLOCK_M / {global_tensor_shape[dim] // WorkerFFTSize}); ++i)
                 *({self.gPtr} + i * {access_stride}) = {self.rPtr_3}[i];
-        '''                 
+        '''
+            globalAccess_code += '''}'''
         return globalAccess_code
 
     def list_reverse(self, list_, st, end):
@@ -312,8 +316,12 @@ __device__ void fft_{int(log(N, self.radix))}_fused''' \
     '''
         
         shared2reg_code += '''
-    __syncthreads();
+    }
+    __syncthreads();    
     '''
+        shared2reg_code += f'''
+    if(threadIdx.x < THREADBLOCK_K * {th.prod(th.as_tensor(threadblock_tensor_shape)) // WorkerFFTSize} )
+    ''' + '{'
         for j in range(WorkerFFTSize):
             i = j % WorkerFFTSize
             shared2reg_code += f'''
@@ -344,16 +352,24 @@ __device__ void fft_{int(log(N, self.radix))}_fused''' \
         if dim == len(threadblock_tensor_shape) - 1:
             access_stride = int(threadblock_bs * th.prod(th.as_tensor(threadblock_tensor_shape))
                          / WorkerFFTSize)
-            reg2shared_code += f'''
+            reg2shared_code += '''
+    }
     __syncthreads();
     '''
+            reg2shared_code += f'''
+    if(threadIdx.x < THREADBLOCK_K * {th.prod(th.as_tensor(threadblock_tensor_shape)) // WorkerFFTSize} )
+    ''' + '{'
             for i in range(WorkerFFTSize):
                 reg2shared_code += f'''
     {self.shPtr}[threadIdx.x + {access_stride * i}] = {self.rPtr}[{dict_output[i]}];
     '''
-            reg2shared_code += f'''
+            reg2shared_code += '''
+    }
     __syncthreads();
     '''
+            reg2shared_code += f'''
+    if(threadIdx.x < THREADBLOCK_K * {th.prod(th.as_tensor(threadblock_tensor_shape)) // WorkerFFTSize} )
+    ''' + '{'
             return reg2shared_code
 
         # threadId to tensor coordinates
@@ -380,8 +396,12 @@ __device__ void fft_{int(log(N, self.radix))}_fused''' \
         if dim == len(threadblock_tensor_shape) - 1:
             access_stride = int(threadblock_bs * th.prod(th.as_tensor(threadblock_tensor_shape)) / self.WorkerFFTSize)
         reg2shared_code += '''
+    }
     __syncthreads();
     '''
+        reg2shared_code += f'''
+    if(threadIdx.x < THREADBLOCK_K * {th.prod(th.as_tensor(threadblock_tensor_shape)) // WorkerFFTSize} )
+    ''' + '{'
         N = th.prod(th.as_tensor(threadblock_tensor_shape[dim:]))
         print("reg2shared", self.global_tensor_shape, threadblock_tensor_shape, dim)
         

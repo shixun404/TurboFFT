@@ -1,6 +1,6 @@
 
 extern __shared__ float shared_mem[];
-__device__ void fft_8_fused(float2* gPtr_1, float2* outputs, int stride) {
+__device__ void fft_8_fused(float2* gPtr_1, float2* outputs, float2* sFFT, int stride) {
     int bid_cnt = 0;
     int j;
     int k;
@@ -32,13 +32,16 @@ __device__ void fft_8_fused(float2* gPtr_1, float2* outputs, int stride) {
     tx = threadIdx.x;
     offset = 0;
     gPtr = gPtr_1;
-    shPtr = (float2*) shared_mem;
+    shPtr = sFFT;
     
     int bid = 0;
             
     bx = blockIdx.x;
     tx = threadIdx.x;
     
+        if(threadIdx.x < THREADBLOCK_K * 16 )
+        {
+        
         gPtr += threadIdx.x % 16;
     
         gPtr += (threadIdx.x / 16) * stride;
@@ -307,8 +310,11 @@ __device__ void fft_8_fused(float2* gPtr_1, float2* outputs, int stride) {
     
     offset += (threadIdx.x / 16) * 256;
     
+    }
     __syncthreads();
     
+    if(threadIdx.x < THREADBLOCK_K * 16 )
+    {
     delta_angle.x = __cosf(j * -0.02454369328916073f);
     delta_angle.y = __sinf(j * -0.02454369328916073f);
      
@@ -505,8 +511,11 @@ __device__ void fft_8_fused(float2* gPtr_1, float2* outputs, int stride) {
     offset = 0;
     offset += tx % 16 + tx / 16 * 256;
     
-    __syncthreads();
+    }
+    __syncthreads();    
     
+    if(threadIdx.x < THREADBLOCK_K * 16 )
+    {
     rPtr[0] = shPtr[offset + 0];
     
     rPtr[1] = shPtr[offset + 16];
@@ -764,8 +773,7 @@ __device__ void fft_8_fused(float2* gPtr_1, float2* outputs, int stride) {
     tx = threadIdx.x;
     gPtr = outputs;
         gPtr += threadIdx.x % 16;
-        gPtr += (threadIdx.x / 16) * 256;
-        __syncthreads();
+        gPtr += (threadIdx.x / 16) * THREADBLOCK_M;
     
                 rPtr_3[0] = rPtr[0];
         
@@ -802,5 +810,5 @@ __device__ void fft_8_fused(float2* gPtr_1, float2* outputs, int stride) {
                 #pragma unroll
                 for(int i = 0; i < (THREADBLOCK_M / 16); ++i)
                 *(gPtr + i * 16) = rPtr_3[i];
-        
+        }
 }
