@@ -163,7 +163,7 @@ class TurboFFT:
         head = f'''
 extern __shared__ float shared_mem[];
 __device__ void fft_{int(log(N, self.radix))}_fused_output''' \
-        + f'''(float2* inputs, float2* outputs, float2* sFFT, int stride, int output_dim)''' + ''' {
+        + f'''(float2* inputs, float2* outputs, float2* sFFT, int stride)''' + ''' {
     int bid_cnt = 0;
     '''
     #     head += f'''
@@ -246,11 +246,9 @@ __device__ void fft_{int(log(N, self.radix))}_fused_output''' \
         if not if_to_shared:
             for i in range(WorkerFFTSize):
                 if not if_output:
-                    pass
-        #             if not if_correction:
-        #                 globalAccess_code += f'''
-        # {self.rPtr}[{i}] = *({self.gPtr} + {i * access_stride});
-        # '''   
+                    if not if_correction:
+                        globalAccess_code += f'''
+        {self.rPtr}[{i}] = ''' + '''{0, 0};'''
                 else:
                     if if_twiddle:
                         N = th.prod(global_tensor_shape[:(dim + 1)])
@@ -283,7 +281,7 @@ __device__ void fft_{int(log(N, self.radix))}_fused_output''' \
 
             globalAccess_code += f'''
                 #pragma unroll
-                for(int i = 0; i < (output_dim / {global_tensor_shape[dim] // WorkerFFTSize}); ++i)
+                for(int i = 0; i < (THREADBLOCK_M / {global_tensor_shape[dim] // WorkerFFTSize}); ++i)
                 {self.rPtr}[i] = *({self.gPtr} + i * {access_stride});
         '''
         else:

@@ -1,6 +1,6 @@
 
 extern __shared__ float shared_mem[];
-__device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT, int stride, int output_dim) {
+__device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT, int stride) {
     int bid_cnt = 0;
     int j;
     int k;
@@ -46,8 +46,16 @@ __device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT
         gPtr += (threadIdx.x / 16) * 128;
 
 
+        rPtr[0] = {0, 0};
+        rPtr[1] = {0, 0};
+        rPtr[2] = {0, 0};
+        rPtr[3] = {0, 0};
+        rPtr[4] = {0, 0};
+        rPtr[5] = {0, 0};
+        rPtr[6] = {0, 0};
+        rPtr[7] = {0, 0};
                 #pragma unroll
-                for(int i = 0; i < (output_dim / 16); ++i)
+                for(int i = 0; i < (THREADBLOCK_M / 16); ++i)
                 rPtr[i] = *(gPtr + i * 16);
         
     tmp = rPtr[0];

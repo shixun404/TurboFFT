@@ -1,6 +1,6 @@
 
 extern __shared__ float shared_mem[];
-__device__ void fft_7_fused(float2* gPtr_1, float2* outputs, float2* sFFT, int stride, int output_dim) {
+__device__ void fft_7_fused(float2* gPtr_1, float2* outputs, float2* sFFT, int stride) {
     int bid_cnt = 0;
     int j;
     int k;
@@ -537,7 +537,7 @@ __device__ void fft_7_fused(float2* gPtr_1, float2* outputs, float2* sFFT, int s
                 rPtr_3[7] = rPtr[7];
         
                 #pragma unroll
-                for(int i = 0; i < (output_dim / 16); ++i)
+                for(int i = 0; i < (THREADBLOCK_M / 16); ++i)
                 *(gPtr + i * 16) = rPtr_3[i];
         }
 }
