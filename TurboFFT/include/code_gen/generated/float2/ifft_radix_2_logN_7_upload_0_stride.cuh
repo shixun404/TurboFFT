@@ -1,6 +1,6 @@
 
 extern __shared__ float shared_mem[];
-__global__ void ifft_7_stride(float2* gPtr_1, float2* outputs, int threadblock_bs, int DY, int global_bs) {
+__global__ void ifft_7_stride(float2* gPtr_1, float2* outputs, int threadblock_bs, int DY, int global_bs, int dimX) {
     int bid_cnt = 0;
     int j;
     int k;
@@ -38,14 +38,14 @@ __global__ void ifft_7_stride(float2* gPtr_1, float2* outputs, int threadblock_b
     
     for(int bid_itr = 0; (bid_itr * gridDim.x + blockIdx.x) * threadblock_bs < global_bs; ++bid_itr){
     
-gPtr = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * 64);
+gPtr = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * dimX);
         
     bx = blockIdx.x;
     tx = threadIdx.x;
     
             gPtr += threadIdx.x % 16 * DY;
     
-    gPtr += ((blockIdx.x % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / 16) + (blockIdx.x / (DY / threadblock_bs)) * DY * 64;
+    gPtr += ((blockIdx.x % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / 16) + (blockIdx.x / (DY / threadblock_bs)) * DY * dimX;
     
         rPtr[0] = {0, 0};
         rPtr[1] = {0, 0};
@@ -56,7 +56,7 @@ gPtr = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs 
         rPtr[6] = {0, 0};
         rPtr[7] = {0, 0};
                 #pragma unroll
-                for(int i = 0; i < (64 / 16); ++i)
+                for(int i = 0; i < (dimX / 16); ++i)
                 rPtr[i] = *(gPtr + i * 16 * DY);
         
     tmp = rPtr[0];

@@ -163,7 +163,7 @@ class TurboFFT:
         head = f'''
 extern __shared__ float shared_mem[];
 __global__ void ifft_{int(log(N, self.radix))}_stride''' \
-        + f'''(float2* gPtr_1, float2* outputs, int threadblock_bs, int DY, int global_bs)''' + ''' {
+        + f'''(float2* gPtr_1, float2* outputs, int threadblock_bs, int DY, int global_bs, int dimX)''' + ''' {
     int bid_cnt = 0;
     '''
     #     head += f'''
@@ -184,7 +184,7 @@ __global__ void ifft_{int(log(N, self.radix))}_stride''' \
     for(int bid_itr = 0; (bid_itr * gridDim.x + blockIdx.x) * threadblock_bs < global_bs; ++bid_itr){
     '''
         head += f'''
-{self.gPtr} = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * 64);
+{self.gPtr} = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * dimX);
 '''
         return head
     
@@ -220,7 +220,7 @@ __global__ void ifft_{int(log(N, self.radix))}_stride''' \
             globalAccess_code += f'''
             {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize} * DY;
     
-    {self.gPtr} += ((blockIdx.x % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) + (blockIdx.x / (DY / threadblock_bs)) * DY * 64;
+    {self.gPtr} += ((blockIdx.x % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) + (blockIdx.x / (DY / threadblock_bs)) * DY * dimX;
     '''  
         
         
@@ -296,7 +296,7 @@ __global__ void ifft_{int(log(N, self.radix))}_stride''' \
         #     '''    
             globalAccess_code += f'''
                 #pragma unroll
-                for(int i = 0; i < (64 / {global_tensor_shape[dim] // WorkerFFTSize}); ++i)
+                for(int i = 0; i < (dimX / {global_tensor_shape[dim] // WorkerFFTSize}); ++i)
                 {self.rPtr}[i] = *({self.gPtr} + i * {access_stride} * DY);
         '''     
         else:
