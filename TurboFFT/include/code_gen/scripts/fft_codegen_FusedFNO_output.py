@@ -41,11 +41,18 @@ class TurboFFT:
         self.threadblock_tensor_shape = []
         for size, N_tmp in zip(WorkerFFTSizes, self.global_tensor_shape[:-1]):
             threadblock_tensor_shape = []
+            N_ref = N_tmp
+            print(N_ref)
             while N_tmp > 1:
                 threadblock_tensor_shape.append(size if N_tmp >= size else int(N_tmp))
                 N_tmp /= size
             threadblock_tensor_shape.reverse()
+            # if len(threadblock_tensor_shape) == 3:
+            #     threadblock_tensor_shape = [threadblock_tensor_shape[0], threadblock_tensor_shape[0], threadblock_tensor_shape[2]]
             self.threadblock_tensor_shape.append(threadblock_tensor_shape)
+            
+        print(self.threadblock_tensor_shape)
+        # assert 0
     def init(self, dim=0):
         self.local_variable = {
             "j" : ("int", "0"),
@@ -110,6 +117,8 @@ class TurboFFT:
 
         reg_tensor_stride = th.as_tensor([1, 2, 4, 8, 16, 32, 64], dtype=th.float)
         state_vec = self.state_vec.clone()
+        # print(self.global_tensor_shape, self.threadblock_tensor_shape)
+        # assert 0
         for dim in range(len(self.global_tensor_shape) - 2, -1, -1):
             self.init(dim)
             threadblock_tensor_shape =  self.threadblock_tensor_shape[dim]

@@ -58,31 +58,36 @@ __device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT
                 for(int i = 0; i < (THREADBLOCK_M / 16); ++i)
                 rPtr[i] = *(gPtr + i * 16);
         
-    tmp = rPtr[0];
-    turboFFT_ZADD(rPtr[0], tmp, rPtr[4]);
-    turboFFT_ZSUB(rPtr[4], tmp, rPtr[4]);
-    tmp = rPtr[4];
+
+                rPtr[4] = rPtr[0];
+                rPtr[5] = rPtr[1];
+                rPtr[6] = rPtr[2];
+                rPtr[7] = rPtr[3];
+    // tmp = rPtr[0];
+    // turboFFT_ZADD(rPtr[0], tmp, rPtr[4]);
+    // turboFFT_ZSUB(rPtr[4], tmp, rPtr[4]);
+    // tmp = rPtr[4];
     
-    tmp = rPtr[1];
-    turboFFT_ZADD(rPtr[1], tmp, rPtr[5]);
-    turboFFT_ZSUB(rPtr[5], tmp, rPtr[5]);
+    // tmp = rPtr[1];
+    // turboFFT_ZADD(rPtr[1], tmp, rPtr[5]);
+    // turboFFT_ZSUB(rPtr[5], tmp, rPtr[5]);
     tmp = rPtr[5];
     
         angle.x = 0.7071067811865476f;
         angle.y = -0.7071067811865475f;
         turboFFT_ZMUL(rPtr[5], tmp, angle);
         
-    tmp = rPtr[2];
-    turboFFT_ZADD(rPtr[2], tmp, rPtr[6]);
-    turboFFT_ZSUB(rPtr[6], tmp, rPtr[6]);
+    // tmp = rPtr[2];
+    // turboFFT_ZADD(rPtr[2], tmp, rPtr[6]);
+    // turboFFT_ZSUB(rPtr[6], tmp, rPtr[6]);
     tmp = rPtr[6];
     
     rPtr[6].y = -tmp.x;
     rPtr[6].x = tmp.y;
     
-    tmp = rPtr[3];
-    turboFFT_ZADD(rPtr[3], tmp, rPtr[7]);
-    turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
+    // tmp = rPtr[3];
+    // turboFFT_ZADD(rPtr[3], tmp, rPtr[7]);
+    // turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
     tmp = rPtr[7];
     
         angle.x = -0.7071067811865475f;
