@@ -1,6 +1,6 @@
 
 extern __shared__ float shared_mem[];
-__global__ void ifft_10_stride(float2* gPtr_1, float2* outputs, int threadblock_bs, int DY) {
+__global__ void ifft_10_stride(float2* gPtr_1, float2* outputs, int threadblock_bs, int DY, int global_bs) {
     int bid_cnt = 0;
     int j;
     int k;
@@ -35,7 +35,11 @@ __global__ void ifft_10_stride(float2* gPtr_1, float2* outputs, int threadblock_
     shPtr = (float2*) shared_mem;
     
     int bid = 0;
-            
+    
+    for(int bid_itr = 0; (bid_itr * gridDim.x + blockIdx.x) * threadblock_bs < global_bs; ++bid_itr){
+    
+gPtr = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * 64);
+        
     bx = blockIdx.x;
     tx = threadIdx.x;
     
@@ -1090,7 +1094,7 @@ __global__ void ifft_10_stride(float2* gPtr_1, float2* outputs, int threadblock_
     bx = blockIdx.x;
     tx = threadIdx.x;
     
-        gPtr = outputs;
+        gPtr = outputs + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * 1024);
         gPtr += threadIdx.x % 64 * DY;
     
     gPtr += ((blockIdx.x % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / 64) + (blockIdx.x / (DY / threadblock_bs)) * DY * 1024;
@@ -1128,4 +1132,5 @@ __global__ void ifft_10_stride(float2* gPtr_1, float2* outputs, int threadblock_
         
         *(gPtr + 960 * DY) = rPtr[15];
         
+}
 }
