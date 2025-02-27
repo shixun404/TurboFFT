@@ -184,7 +184,7 @@ __global__ void ifft_{int(log(N, self.radix))}_stride_DY''' \
     for(int bid_itr = 0; (bid_itr * gridDim.x + blockIdx.x) * threadblock_bs < global_bs; ++bid_itr){
     '''
         head += f'''
-{self.gPtr} = gPtr_1 + bid_itr * gridDim.x * threadblock_bs * 64);
+{self.gPtr} = gPtr_1 + bid_itr * gridDim.x * threadblock_bs * 64;
 '''
         return head
     
@@ -210,7 +210,7 @@ __global__ void ifft_{int(log(N, self.radix))}_stride_DY''' \
     ''' 
         if if_output is True:
             globalAccess_code += f'''
-        {self.gPtr} = outputs + bid_itr * gridDim.x * threadblock_bs * {global_tensor_shape[dim]});
+        {self.gPtr} = outputs + bid_itr * gridDim.x * threadblock_bs * {global_tensor_shape[dim]};
         {self.gPtr} += threadIdx.x % {global_tensor_shape[dim] // WorkerFFTSize};
     
     {self.gPtr} += (blockIdx.x * threadblock_bs + threadIdx.x / {global_tensor_shape[dim] // WorkerFFTSize}) * {global_tensor_shape[dim]};

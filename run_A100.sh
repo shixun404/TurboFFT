@@ -3,8 +3,10 @@ gpu=A100
 cd TurboFFT
 cd include/code_gen/scripts
 # python fft_codegen_FusedFNO_output.py --gpu $gpu --datatype float2
-python fft_codegen_stride.py --gpu $gpu --datatype float2
-python fft_codegen_stride_output.py --gpu $gpu --datatype float2
+python fft_codegen_stride_DY.py --gpu $gpu --datatype float2
+python fft_codegen_stride_output_DY.py --gpu $gpu --datatype float2
+# python fft_codegen_stride.py --gpu $gpu --datatype float2
+# python fft_codegen_stride_output.py --gpu $gpu --datatype float2
 # python fft_codegen_FusedFNO.py --gpu $gpu --datatype float2
 # python fft_codegen_SignalMajorShmem.py --gpu $gpu --datatype float2
 # python fft_codegen.py --gpu $gpu --datatype float2

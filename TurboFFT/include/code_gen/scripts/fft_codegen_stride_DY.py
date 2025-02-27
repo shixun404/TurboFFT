@@ -184,7 +184,7 @@ __global__ void fft_{int(log(N, self.radix))}_stride_DY''' \
     for(int bid_itr = 0; (bid_itr * gridDim.x + blockIdx.x) * threadblock_bs < global_bs; ++bid_itr){
     '''
         head += f'''
-{self.gPtr} = gPtr_1 + bid_itr * gridDim.x * threadblock_bs * {global_tensor_shape[dim]});
+{self.gPtr} = gPtr_1 + bid_itr * gridDim.x * threadblock_bs * {global_tensor_shape[dim]};
 '''
         return head
     
