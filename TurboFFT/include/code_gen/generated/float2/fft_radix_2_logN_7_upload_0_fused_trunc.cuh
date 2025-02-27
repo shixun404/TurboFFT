@@ -1,6 +1,6 @@
 
 extern __shared__ float shared_mem[];
-__device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT, int stride) {
+__device__ void fft_7_fused_trunc(float2* gPtr_1, float2* outputs, float2* sFFT, int stride) {
     int bid_cnt = 0;
     int j;
     int k;
@@ -31,7 +31,7 @@ __device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT
     bx = blockIdx.x;
     tx = threadIdx.x;
     offset = 0;
-    gPtr = inputs;
+    gPtr = gPtr_1;
     shPtr = sFFT;
     
     int bid = 0;
@@ -41,22 +41,26 @@ __device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT
     
         if(threadIdx.x < THREADBLOCK_K * 16 )
         {
-        gPtr = inputs;
+        
         gPtr += threadIdx.x % 16;
-        gPtr += (threadIdx.x / 16) * 128;
+    
+        gPtr += (threadIdx.x / 16) * stride;
 
-
-        rPtr[0] = {0, 0};
-        rPtr[1] = {0, 0};
-        rPtr[2] = {0, 0};
-        rPtr[3] = {0, 0};
-        rPtr[4] = {0, 0};
-        rPtr[5] = {0, 0};
-        rPtr[6] = {0, 0};
-        rPtr[7] = {0, 0};
-                #pragma unroll
-                for(int i = 0; i < (THREADBLOCK_M / 16); ++i)
-                rPtr[i] = *(gPtr + i * 16);
+        rPtr[0] = *(gPtr + 0);
+        
+        rPtr[1] = *(gPtr + 16);
+        
+        rPtr[2] = *(gPtr + 32);
+        
+        rPtr[3] = *(gPtr + 48);
+        
+        rPtr[4] = *(gPtr + 64);
+        
+        rPtr[5] = *(gPtr + 80);
+        
+        rPtr[6] = *(gPtr + 96);
+        
+        rPtr[7] = *(gPtr + 112);
         
     tmp = rPtr[0];
     turboFFT_ZADD(rPtr[0], tmp, rPtr[4]);
@@ -492,45 +496,48 @@ __device__ void fft_7_fused_output(float2* inputs, float2* outputs, float2* sFFT
     
     tmp = rPtr[0];
     turboFFT_ZADD(rPtr[0], tmp, rPtr[4]);
-    turboFFT_ZSUB(rPtr[4], tmp, rPtr[4]);
-    tmp = rPtr[4];
+    // turboFFT_ZSUB(rPtr[4], tmp, rPtr[4]);
+    // tmp = rPtr[4];
     
     tmp = rPtr[1];
     turboFFT_ZADD(rPtr[1], tmp, rPtr[5]);
-    turboFFT_ZSUB(rPtr[5], tmp, rPtr[5]);
-    tmp = rPtr[5];
+    // turboFFT_ZSUB(rPtr[5], tmp, rPtr[5]);
+    // tmp = rPtr[5];
     
     tmp = rPtr[2];
     turboFFT_ZADD(rPtr[2], tmp, rPtr[6]);
-    turboFFT_ZSUB(rPtr[6], tmp, rPtr[6]);
-    tmp = rPtr[6];
+    // turboFFT_ZSUB(rPtr[6], tmp, rPtr[6]);
+    // tmp = rPtr[6];
     
     tmp = rPtr[3];
     turboFFT_ZADD(rPtr[3], tmp, rPtr[7]);
-    turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
-    tmp = rPtr[7];
+    // turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
+    // tmp = rPtr[7];
             
     bx = blockIdx.x;
     tx = threadIdx.x;
     gPtr = outputs;
         gPtr += threadIdx.x % 16;
+        gPtr += (threadIdx.x / 16) * THREADBLOCK_M;
     
-        gPtr += (threadIdx.x / 16) * stride;
-    
-                    *(gPtr + 0) = rPtr[0];
-                    
-                    *(gPtr + 16) = rPtr[1];
-                    
-                    *(gPtr + 32) = rPtr[2];
-                    
-                    *(gPtr + 48) = rPtr[3];
-                    
-                    *(gPtr + 64) = rPtr[4];
-                    
-                    *(gPtr + 80) = rPtr[5];
-                    
-                    *(gPtr + 96) = rPtr[6];
-                    
-                    *(gPtr + 112) = rPtr[7];
-                    }
+                rPtr_3[0] = rPtr[0];
+        
+                rPtr_3[1] = rPtr[1];
+        
+                rPtr_3[2] = rPtr[2];
+        
+                rPtr_3[3] = rPtr[3];
+        
+                rPtr_3[4] = rPtr[4];
+        
+                rPtr_3[5] = rPtr[5];
+        
+                rPtr_3[6] = rPtr[6];
+        
+                rPtr_3[7] = rPtr[7];
+        
+                #pragma unroll
+                for(int i = 0; i < (THREADBLOCK_M / 16); ++i)
+                *(gPtr + i * 16) = rPtr_3[i];
+        }
 }

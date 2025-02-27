@@ -496,23 +496,23 @@ __device__ void fft_7_fused(float2* gPtr_1, float2* outputs, float2* sFFT, int s
     
     tmp = rPtr[0];
     turboFFT_ZADD(rPtr[0], tmp, rPtr[4]);
-    // turboFFT_ZSUB(rPtr[4], tmp, rPtr[4]);
-    // tmp = rPtr[4];
+    turboFFT_ZSUB(rPtr[4], tmp, rPtr[4]);
+    tmp = rPtr[4];
     
     tmp = rPtr[1];
     turboFFT_ZADD(rPtr[1], tmp, rPtr[5]);
-    // turboFFT_ZSUB(rPtr[5], tmp, rPtr[5]);
-    // tmp = rPtr[5];
+    turboFFT_ZSUB(rPtr[5], tmp, rPtr[5]);
+    tmp = rPtr[5];
     
     tmp = rPtr[2];
     turboFFT_ZADD(rPtr[2], tmp, rPtr[6]);
-    // turboFFT_ZSUB(rPtr[6], tmp, rPtr[6]);
-    // tmp = rPtr[6];
+    turboFFT_ZSUB(rPtr[6], tmp, rPtr[6]);
+    tmp = rPtr[6];
     
     tmp = rPtr[3];
     turboFFT_ZADD(rPtr[3], tmp, rPtr[7]);
-    // turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
-    // tmp = rPtr[7];
+    turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
+    tmp = rPtr[7];
             
     bx = blockIdx.x;
     tx = threadIdx.x;
