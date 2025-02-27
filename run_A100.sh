@@ -2,7 +2,12 @@ export CUDA_SAMPLES_COMMON=$(pwd)/Common
 gpu=A100
 cd TurboFFT
 cd include/code_gen/scripts
-python fft_codegen.py --gpu $gpu --datatype float2
+# python fft_codegen_FusedFNO_output.py --gpu $gpu --datatype float2
+python fft_codegen_stride.py --gpu $gpu --datatype float2
+python fft_codegen_stride_output.py --gpu $gpu --datatype float2
+# python fft_codegen_FusedFNO.py --gpu $gpu --datatype float2
+# python fft_codegen_SignalMajorShmem.py --gpu $gpu --datatype float2
+# python fft_codegen.py --gpu $gpu --datatype float2
 # python fft_codegen.py --gpu $gpu --datatype float2 --if_thread_ft 1
 # python fft_codegen.py --gpu $gpu --datatype float2  --if_ft 1
 # python fft_codegen.py --gpu $gpu --datatype float2 --if_ft 1 --if_err_injection 1
