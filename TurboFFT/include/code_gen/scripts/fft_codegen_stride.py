@@ -294,7 +294,16 @@ __global__ void fft_{int(log(N, self.radix))}_stride''' \
                     #pragma unroll
                     for(int i = 0; i < (dimX / {(global_tensor_shape[dim] // WorkerFFTSize)}); ++i)
                     *({self.gPtr} + i * {access_stride} * DY) = {self.rPtr_3}[i];
-            '''           
+            '''
+            # globalAccess_code += f'''
+            #         if(dimX >= {(global_tensor_shape[dim] // WorkerFFTSize)})''' + '''{''' + f'''
+            #         #pragma unroll
+            #         for(int i = 0; i < (dimX / {(global_tensor_shape[dim] // WorkerFFTSize)}); ++i)
+            #         *({self.gPtr} + i * {access_stride} * DY) = {self.rPtr_3}[i];
+            # ''' + '''} else {''' + f'''
+            #     if(threadIdx.x % {(global_tensor_shape[dim] // WorkerFFTSize)} < dimX)
+            #      *({self.gPtr}) = {self.rPtr_3}[0];
+            # '''         + '''}'''
         return globalAccess_code
 
     def list_reverse(self, list_, st, end):

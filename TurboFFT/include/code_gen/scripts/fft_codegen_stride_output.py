@@ -298,7 +298,16 @@ __global__ void ifft_{int(log(N, self.radix))}_stride''' \
                 #pragma unroll
                 for(int i = 0; i < (dimX / {global_tensor_shape[dim] // WorkerFFTSize}); ++i)
                 {self.rPtr}[i] = *({self.gPtr} + i * {access_stride} * DY);
-        '''     
+        '''
+            # globalAccess_code += f'''
+            #         if(dimX >= {(global_tensor_shape[dim] // WorkerFFTSize)})''' + '''{''' + f'''
+            #         #pragma unroll
+            #         for(int i = 0; i < (dimX / {(global_tensor_shape[dim] // WorkerFFTSize)}); ++i)
+            #         {self.rPtr}[i] = *({self.gPtr} + i * {access_stride} * DY);
+            # ''' + '''} else {''' + f'''
+            #     if(threadIdx.x % {(global_tensor_shape[dim] // WorkerFFTSize)} < dimX)
+            #      {self.rPtr}[0] = *({self.gPtr});
+            # '''    + '''}'''
         else:
             for i in range(WorkerFFTSize):
                 globalAccess_code += f'''
