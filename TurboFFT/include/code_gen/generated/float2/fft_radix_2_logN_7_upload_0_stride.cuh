@@ -36,16 +36,17 @@ __global__ void fft_7_stride(float2* gPtr_1, float2* outputs, int threadblock_bs
     
     int bid = 0;
     
-    for(int bid_itr = 0; (bid_itr * gridDim.x + blockIdx.x) * threadblock_bs < global_bs; ++bid_itr){
-    
-gPtr = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * 128);
+    // for(int bid_itr = 0; (bid_itr * gridDim.x + blockIdx.x) * threadblock_bs < global_bs; ++bid_itr){
+    if ((blockIdx.x + blockIdx.y * gridDim.x) * threadblock_bs < global_bs) {
+    int bid_itr = 0;
+gPtr = gPtr_1 + bid_itr * (((gridDim.x * gridDim.y) % (DY / threadblock_bs)) * threadblock_bs + ((gridDim.x * gridDim.y) / (DY / threadblock_bs)) * DY * 128);
         
-    bx = blockIdx.x;
+    bx = blockIdx.x + blockIdx.y * gridDim.x;
     tx = threadIdx.x;
     
         gPtr += threadIdx.x % 16 * DY;
     
-    gPtr += ((blockIdx.x % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / 16) + (blockIdx.x / (DY / threadblock_bs)) * DY * 128;
+    gPtr += (((blockIdx.x + blockIdx.y * gridDim.x) % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / 16) + ((blockIdx.x + blockIdx.y * gridDim.x) / (DY / threadblock_bs)) * DY * 128;
     
 
         rPtr[0] = *(gPtr + 0 * DY);
@@ -504,12 +505,12 @@ gPtr = gPtr_1 + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs 
     turboFFT_ZSUB(rPtr[7], tmp, rPtr[7]);
     tmp = rPtr[7];
             
-    bx = blockIdx.x;
+    bx = blockIdx.x + blockIdx.y * gridDim.x;
     tx = threadIdx.x;
-    gPtr = outputs + bid_itr * ((gridDim.x % (DY / threadblock_bs)) * threadblock_bs + (gridDim.x / (DY / threadblock_bs)) * DY * dimX);
+    gPtr = outputs + bid_itr * (((gridDim.x * gridDim.y) % (DY / threadblock_bs)) * threadblock_bs + ((gridDim.x * gridDim.y) / (DY / threadblock_bs)) * DY * dimX);
             gPtr += threadIdx.x % 16 * DY;
     
-    gPtr += ((blockIdx.x % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / 16) + (blockIdx.x / (DY / threadblock_bs)) * DY * dimX;
+    gPtr += (((blockIdx.x + blockIdx.y * gridDim.x) % (DY / threadblock_bs)) * threadblock_bs + threadIdx.x / 16) + ((blockIdx.x + blockIdx.y * gridDim.x) / (DY / threadblock_bs)) * DY * dimX;
     
                 rPtr_3[0] = rPtr[0];
         
